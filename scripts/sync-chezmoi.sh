@@ -55,33 +55,25 @@ render_external_inventory() {
         '
 }
 
-filter_success_output() {
-    awk '
-        /^Already up to date\.$/ { next }
-        /^From / { next }
-        /^[[:space:]]+\* branch[[:space:]].*->[[:space:]]FETCH_HEAD$/ { next }
-        /->[[:space:]]*origin\// { next }
-        /^Updating [0-9a-f]+\.\.[0-9a-f]+$/ { next }
-        /^Fast-forward$/ { git_summary = 1; next }
-        git_summary && /^[[:space:]].*\|/ { next }
-        git_summary && /^[[:space:]]*[0-9]+ files? changed/ {
-            git_summary = 0
-            next
-        }
-        /^[[:space:]]*(create|delete) mode [0-9]+ / { next }
-        /^[[:space:]]*rename .* \([0-9]+%\)$/ { next }
-        { print }
-    '
+step() {
+    if [[ -t 1 ]]; then
+        printf '\n\033[1;34m==> %s\033[0m\n' "$1"
+    else
+        printf '\n==> %s\n' "$1"
+    fi
 }
 
-printf 'Repositories:\n'
+step "Repositories"
 sync_repo "dotfiles" "$DOTFILES_DIR"
 sync_repo "private companion" "$PRIVATE_DIR"
 
 init_args=(--no-tty --source "$DOTFILES_DIR")
-apply_args=(--no-tty --refresh-externals)
+# Externals are noisy but never prompt: refresh them non-interactively.
+ext_args=(--refresh-externals=always --include=externals --force)
+# Managed files may prompt on local divergence: applied separately, interactively.
+managed_args=(--exclude=externals)
 if [[ "$FORCE" -eq 1 ]]; then
-    apply_args+=(--force)
+    managed_args+=(--no-tty --force)
 fi
 chezmoi init "${init_args[@]}"
 
@@ -110,14 +102,32 @@ for path in "${git_paths[@]}"; do
     fi
 done
 
-printf 'Chezmoi: applying managed files and refreshing externals...\n'
-if ! chezmoi apply "${apply_args[@]}" >"$apply_output" 2>&1; then
-    printf 'Chezmoi apply failed:\n' >&2
-    sed 's/^/  /' "$apply_output" >&2
+step "Externals"
+external_total=$(( ${#git_paths[@]} + archive_count ))
+printf '  refreshing %d externals (this can take a while)...\n' "$external_total"
+# Raw git fetch/diff output is captured and discarded on success; the per-repo
+# summary below reports what actually changed. Show a live spinner meanwhile.
+chezmoi apply "${ext_args[@]}" >"$apply_output" 2>&1 &
+apply_pid=$!
+if [[ -t 2 ]]; then
+    spin='|/-\'
+    i=0
+    start=$SECONDS
+    while kill -0 "$apply_pid" 2>/dev/null; do
+        elapsed=$((SECONDS - start))
+        last="$(tail -n1 "$apply_output" 2>/dev/null)"
+        printf '\r\033[K  %s %3ds  %.50s' "${spin:i++%4:1}" "$elapsed" "$last" >&2
+        sleep 0.5
+    done
+    printf '\r\033[K' >&2
+fi
+rc=0
+wait "$apply_pid" || rc=$?
+if [[ "$rc" -ne 0 ]]; then
+    printf '  external refresh failed:\n' >&2
+    sed 's/^/    /' "$apply_output" >&2
     exit 1
 fi
-
-filter_success_output <"$apply_output"
 
 updated=0
 cloned=0
@@ -160,4 +170,12 @@ printf 'Externals: %d Git checked' "${#git_paths[@]}"
 printf '\n'
 if [[ "${#changes[@]}" -gt 0 ]]; then
     printf '%s\n' "${changes[@]}"
+fi
+
+step "Managed files"
+# Foreground so chezmoi's overwrite/skip prompt is answerable on divergence;
+# quiet by design (no external git noise). run_ scripts stream their output.
+if ! chezmoi apply "${managed_args[@]}"; then
+    printf '  chezmoi apply failed.\n' >&2
+    exit 1
 fi
