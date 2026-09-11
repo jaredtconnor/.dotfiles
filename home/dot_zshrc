@@ -176,15 +176,6 @@ bindkey -s ^a "nvims\n"
 export BUN_INSTALL="$HOME/.bun"
 export PATH="$BUN_INSTALL/bin:$PATH"
 
-# Node
-if [[ "$OSTYPE" == "darwin"* ]]; then
-    export PATH="/opt/homebrew/opt/node/bin:$PATH"
-elif [[ "$OSTYPE" == "linux-gnu"* ]]; then
-    if [[ -d "/home/linuxbrew/.linuxbrew/opt/node/bin" ]]; then
-        export PATH="/home/linuxbrew/.linuxbrew/opt/node/bin:$PATH"
-    fi
-fi
-
 # Color configuration
 if [[ "$TERM_PROGRAM" != "ghostty" ]]; then
     export TERM="xterm-256color"
