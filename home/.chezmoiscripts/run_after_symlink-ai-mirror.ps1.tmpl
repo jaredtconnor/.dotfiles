@@ -19,11 +19,17 @@ $skillDests = @(
 )
 foreach ($d in $skillDests) { New-Item -ItemType Directory -Force -Path $d | Out-Null }
 
+function Remove-Junction([string]$link) {
+    # rmdir drops a directory junction without touching the target's contents;
+    # Remove-Item on a reparse point throws NullReferenceException on PS 5.1.
+    cmd /c rmdir "$link" | Out-Null
+}
+
 function Ensure-Junction([string]$target, [string]$link) {
     $existing = Get-Item -LiteralPath $link -ErrorAction SilentlyContinue
     if ($existing) {
         if ($existing.LinkType -and ($existing.Target -eq $target)) { return $false }
-        if ($existing.LinkType) { Remove-Item -LiteralPath $link -Force }
+        if ($existing.LinkType) { Remove-Junction $link }
         else { return $false }  # a real directory is in the way; leave it alone
     }
     cmd /c mklink /J "$link" "$target" | Out-Null
@@ -46,8 +52,17 @@ $claimed = @{}
 $changed = 0
 foreach ($root in $roots) {
     $skillsDir = Join-Path $root "skills"
-    if (-not (Test-Path $skillsDir)) { continue }
-    foreach ($sf in (Get-ChildItem -Path $skillsDir -Recurse -Filter "SKILL.md" -File -ErrorAction SilentlyContinue)) {
+    if (Test-Path $skillsDir) {
+        # Standard layout: <root>/skills/**/SKILL.md (nested groups allowed).
+        $skillFiles = Get-ChildItem -Path $skillsDir -Recurse -Filter "SKILL.md" -File -ErrorAction SilentlyContinue
+    } else {
+        # Pack keeps skill dirs at its own root (e.g. gstack): scan one level deep.
+        $skillFiles = Get-ChildItem -Path $root -Directory -ErrorAction SilentlyContinue |
+            ForEach-Object { Join-Path $_.FullName "SKILL.md" } |
+            Where-Object { Test-Path -LiteralPath $_ } |
+            ForEach-Object { Get-Item -LiteralPath $_ }
+    }
+    foreach ($sf in $skillFiles) {
         $name = $sf.Directory.Name
         if ($claimed.ContainsKey($name)) { continue }
         $claimed[$name] = $true
@@ -69,7 +84,7 @@ function Remove-DeadJunctions([string[]]$dirs) {
             if (-not $e.LinkType) { continue }
             $t = [string]$e.Target
             if ($t -and (Test-Path -LiteralPath $t)) { continue }
-            Remove-Item -LiteralPath $e.FullName -Force
+            Remove-Junction $e.FullName
             $removed++
         }
     }

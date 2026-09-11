@@ -140,7 +140,15 @@ link_from() {
 
     local skill_file skill name agent_file command hook
 
-    for skill_file in "$root"/skills/**/SKILL.md; do
+    local -a skill_files=()
+    if [ -d "$root/skills" ]; then
+        # Standard layout: <root>/skills/**/SKILL.md (nested groups allowed).
+        skill_files=("$root"/skills/**/SKILL.md)
+    else
+        # Pack keeps skill dirs at its own root (e.g. gstack): scan one level deep.
+        skill_files=("$root"/*/SKILL.md)
+    fi
+    for skill_file in "${skill_files[@]}"; do
         [ -f "$skill_file" ] || continue
         skill=$(dirname "$skill_file")
         name=$(basename "$skill")
