@@ -94,7 +94,7 @@ fi
 
 # Bat (better cat) - works on both systems
 if type bat >/dev/null 2>&1; then
-    alias cat="bat"
+    alias cat="bat --paging=never"
 fi
 
 # Ripgrep (better grep) - works on both systems
