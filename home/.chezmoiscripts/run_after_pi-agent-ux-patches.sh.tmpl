@@ -19,9 +19,47 @@ cat > "${AGENT_DIR}/keybindings.json" <<'JSON'
 JSON
 
 # ---------------------------------------------------------------------------
+# node lookup: chezmoi scripts run with a non-interactive PATH, and node is
+# owned by mise (see "zsh: let mise own node; drop node PATH prepend"), so
+# bare `node` is missing on hosts without a shell-activated mise. Resolve the
+# shim / mise install directly; skip the patch instead of failing the whole
+# apply when node genuinely is not installed.
+# ---------------------------------------------------------------------------
+find_node() {
+    if command -v node >/dev/null 2>&1; then
+        command -v node
+        return 0
+    fi
+
+    local shim="${HOME}/.local/share/mise/shims/node"
+    if [[ -x "${shim}" ]]; then
+        echo "${shim}"
+        return 0
+    fi
+
+    local mise resolved
+    for mise in "$(command -v mise 2>/dev/null || true)" \
+        "${HOME}/.local/bin/mise" /opt/homebrew/bin/mise /usr/local/bin/mise; do
+        [[ -n "${mise}" && -x "${mise}" ]] || continue
+        resolved="$("${mise}" which node 2>/dev/null || true)"
+        if [[ -n "${resolved}" && -x "${resolved}" ]]; then
+            echo "${resolved}"
+            return 0
+        fi
+    done
+
+    return 1
+}
+
+NODE_BIN="$(find_node || true)"
+
+# ---------------------------------------------------------------------------
 # Extensions: disable handoff (missing optional deps)
 # ---------------------------------------------------------------------------
-node <<'JS'
+if [[ -z "${NODE_BIN}" ]]; then
+    echo "WARNING: node not found; skipping pi extensions settings patch" >&2
+else
+"${NODE_BIN}" <<'JS'
 const fs = require("node:fs");
 const os = require("node:os");
 const path = require("node:path");
@@ -51,6 +89,7 @@ if (Array.isArray(data.extensions)) {
 
 fs.writeFileSync(settingsPath, `${JSON.stringify(data, null, 2)}\n`);
 JS
+fi
 
 # ---------------------------------------------------------------------------
 # tool-pills: local shims so the extension loads without npm
