@@ -53,6 +53,7 @@ AppData
 .chezmoiscripts/install-brewfile.sh
 .chezmoiscripts/install-omp.sh
 .chezmoiscripts/install-linux-packages.sh
+.chezmoiscripts/link-omp-shim.sh
 .chezmoiscripts/mise-setup.sh
 .chezmoiscripts/pi-agent-ux-patches.sh
 .chezmoiscripts/symlink-ai-mirror.sh

@@ -1,0 +1,70 @@
+#!/usr/bin/env bash
+{{/*
+    Stable fleet-wide path for the omp binary: /usr/local/bin/omp.
+
+    Why: processes spawned outside an interactive shell (Happier's ACP backend,
+    launchd/systemd units, editor agents) get execve'd with whatever absolute
+    string is configured -- no ~/.zshrc, no aliases, no PATH from zsh. A shell
+    alias or function cannot serve them.
+
+    $HOME-relative paths don't work either: the usernames differ across the
+    fleet (jaredconnor on the Macs, eigyn on the Ubuntu boxes), so
+    ~/.local/bin/omp is a different absolute string per host.
+    /usr/local/bin is on the default PATH and identical on macOS and Ubuntu.
+
+    Points at the chezmoi-managed install (~/.local/bin/omp, see
+    run_after_install-omp.sh) so the shim always resolves to the pinned build.
+    run_after_ (not run_onchange_) so a host that installs omp later picks the
+    link up on its next apply. Alphabetical ordering puts install-omp first.
+
+    /usr/local/bin is root-owned on most hosts, so the link needs sudo once per
+    machine. Never fatal: an unattended apply prints the command and moves on.
+*/}}
+{{ if ne .chezmoi.os "windows" -}}
+set -uo pipefail
+
+TARGET="/usr/local/bin/omp"
+SRC="${HOME}/.local/bin/omp"
+
+if [[ ! -x "${SRC}" ]]; then
+    echo "omp not installed at ${SRC}; skipping ${TARGET} shim"
+    exit 0
+fi
+
+# Someone put a real binary (not a link) there: leave it alone rather than
+# silently replacing an install this repo doesn't own.
+if [[ -e "${TARGET}" && ! -L "${TARGET}" ]]; then
+    echo "WARNING: ${TARGET} exists and is not a symlink; leaving untouched" >&2
+    exit 0
+fi
+
+if [[ "$(readlink "${TARGET}" 2>/dev/null || true)" != "${SRC}" ]]; then
+    linked=0
+    if [[ -w "$(dirname "${TARGET}")" ]]; then
+        ln -sfn "${SRC}" "${TARGET}" && linked=1
+    elif [[ -t 0 ]]; then
+        sudo ln -sfn "${SRC}" "${TARGET}" && linked=1
+    elif sudo -n true 2>/dev/null; then
+        sudo -n ln -sfn "${SRC}" "${TARGET}" && linked=1
+    fi
+
+    if (( linked )); then
+        echo "linked ${TARGET} -> ${SRC}"
+    else
+        echo "WARNING: could not create ${TARGET} (needs root)." >&2
+        echo "  Run once on this host: sudo ln -sfn ${SRC} ${TARGET}" >&2
+    fi
+fi
+
+# Drift signal: another omp earlier in PATH (e.g. a leftover `bun install -g`
+# copy in ~/.bun/bin) means interactive sessions and spawned agents run
+# different builds.
+resolved="$(command -v omp 2>/dev/null || true)"
+if [[ -n "${resolved}" && "${resolved}" != "${SRC}" && "${resolved}" != "${TARGET}" ]]; then
+    echo "NOTE: PATH resolves omp to ${resolved}, not the managed ${SRC}" >&2
+fi
+
+exit 0
+{{- else -}}
+exit 0
+{{- end }}
