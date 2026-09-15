@@ -2,7 +2,7 @@
 {{/*
     Stable fleet-wide path for the omp binary: /usr/local/bin/omp.
 
-    Why: processes spawned outside an interactive shell (Happier's ACP backend,
+    Why: processes spawned outside an interactive shell (t3 code's ACP backend,
     launchd/systemd units, editor agents) get execve'd with whatever absolute
     string is configured -- no ~/.zshrc, no aliases, no PATH from zsh. A shell
     alias or function cannot serve them.

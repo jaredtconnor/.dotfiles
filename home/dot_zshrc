@@ -203,19 +203,3 @@ zstyle ':completion:*:kill:*' command 'ps -u $USER -o pid,%cpu,tty,cputime,cmd'
 # Auto-rehash so newly-installed binaries on $PATH (e.g. after `chezmoi apply`)
 # are found without having to run `rehash` or open a new shell.
 zstyle ':completion:*' rehash true
-
-# Happy Coder daemon — start it on the first interactive shell after a reboot so
-# the phone/web app can spawn coding sessions on this host without opening a
-# `happy` session first. Guarded: interactive only, once per shell, and ONLY
-# where `happy` is installed (no-op on hosts without it).
-if [[ -o interactive ]] && [[ -z "$HAPPY_DAEMON_CHECKED" ]] && command -v happy >/dev/null 2>&1; then
-    export HAPPY_DAEMON_CHECKED=1
-    () {
-        local state="$HOME/.happy/daemon.state.json"
-        local pid
-        pid=$(grep -oE '"pid"[[:space:]]*:[[:space:]]*[0-9]+' "$state" 2>/dev/null | grep -oE '[0-9]+')
-        if [[ -z "$pid" ]] || ! kill -0 "$pid" 2>/dev/null; then
-            happy daemon start >/dev/null 2>&1
-        fi
-    } &!
-fi

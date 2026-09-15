@@ -85,7 +85,6 @@ AppData
 .local/bin/fjq
 .local/bin/fyr
 .local/bin/fzl
-.local/bin/happy-fleet
 .local/bin/helium-autosync
 .local/bin/manage-service-keys
 .local/bin/npmjs
