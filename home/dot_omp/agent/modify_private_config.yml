@@ -1,0 +1,53 @@
+#!/usr/bin/env bash
+#
+# chezmoi modify_ script for ~/.omp/agent/config.yml.
+# stdin = the file's current content on this host, stdout = its new content.
+#
+# Why not a plain managed file: omp owns this file at runtime. `omp config
+# set`, the /settings panel, the onboarding wizard (setupVersion), and the QA
+# consent prompt (dev.autoqaConsent) all write it. A fully managed file would
+# revert those on every apply and re-trigger the wizard on hosts whose values
+# differ. So chezmoi asserts only the keys below and leaves the rest alone.
+#
+# Merging is done by omp itself against a throwaway agent dir, so the repo
+# never reimplements omp's YAML writer. Note omp validates the top-level key
+# name only: modelRoles is a free-form record, so a misspelled role or model
+# id is written without complaint and then silently never matches. Role names
+# must come from the built-in set (default, smol, slow, vision, plan, commit,
+# tiny, task, advisor) and ids from `omp models` (e.g. claude-haiku-4.5 with a
+# dot, not -4-5).
+#
+# Role values may carry a thinking suffix (anthropic/claude-opus-5:max).
+# Without one they inherit defaultThinkingLevel.
+
+set -euo pipefail
+
+DESIRED_ROLES='{"default":"anthropic/claude-opus-5","plan":"anthropic/claude-opus-5","vision":"anthropic/claude-sonnet-5","tiny":"anthropic/claude-haiku-4.5"}'
+DESIRED_THINKING_LEVEL="high"
+
+current="$(cat)"
+
+omp_bin=""
+for candidate in /usr/local/bin/omp "${HOME}/.local/bin/omp" "$(command -v omp 2>/dev/null || true)"; do
+    if [[ -n "${candidate}" && -x "${candidate}" ]]; then
+        omp_bin="${candidate}"
+        break
+    fi
+done
+
+# No omp on this host yet (first apply installs it later in the same run):
+# emit the file unchanged rather than dropping its contents.
+if [[ -z "${omp_bin}" ]]; then
+    printf '%s' "${current}"
+    echo "WARNING: omp not found; left ~/.omp/agent/config.yml unchanged" >&2
+    exit 0
+fi
+
+work="$(mktemp -d)"
+trap 'rm -rf "${work}"' EXIT
+printf '%s' "${current}" > "${work}/config.yml"
+
+PI_CODING_AGENT_DIR="${work}" "${omp_bin}" config set modelRoles "${DESIRED_ROLES}" >/dev/null
+PI_CODING_AGENT_DIR="${work}" "${omp_bin}" config set defaultThinkingLevel "${DESIRED_THINKING_LEVEL}" >/dev/null
+
+cat "${work}/config.yml"
