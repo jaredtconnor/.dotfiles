@@ -14,6 +14,7 @@ CLAUDE_COMMANDS="$HOME/.claude/commands"
 CLAUDE_HOOKS="$HOME/.claude/hooks"
 CURSOR_SKILLS="$HOME/.cursor/skills"
 CURSOR_AGENTS="$HOME/.cursor/agents"
+CURSOR_COMMANDS="$HOME/.cursor/commands"
 CODEX_SKILLS="$HOME/.codex/skills"
 PI_SKILLS="$HOME/.pi/agent/skills"
 PI_PROMPTS="$HOME/.pi/agent/prompts"
@@ -24,7 +25,8 @@ DOTAGENTS_HOOKS="$HOME/.agents/hooks"
 
 mkdir -p \
     "$CLAUDE_SKILLS" "$CLAUDE_AGENTS" "$CLAUDE_COMMANDS" "$CLAUDE_HOOKS" \
-    "$CURSOR_SKILLS" "$CURSOR_AGENTS" "$CODEX_SKILLS" "$PI_SKILLS" "$PI_PROMPTS" \
+    "$CURSOR_SKILLS" "$CURSOR_AGENTS" "$CURSOR_COMMANDS" "$CODEX_SKILLS" \
+    "$PI_SKILLS" "$PI_PROMPTS" \
     "$DOTAGENTS_SKILLS" "$DOTAGENTS_AGENTS" "$DOTAGENTS_COMMANDS" "$DOTAGENTS_HOOKS"
 
 CHANGED=0
@@ -153,10 +155,11 @@ link_from() {
         skill=$(dirname "$skill_file")
         name=$(basename "$skill")
 
-        # Claude Code surfaces command-backed skills as slash entries. When a
-        # workflow has both commands/<name>.md and skills/**/<name>/SKILL.md,
-        # export the command to Claude and .agents. Pi receives both the skill
-        # body and a prompt template so `/refine` expands natively there.
+        # Claude Code and Cursor surface command-backed skills as slash
+        # entries. When a workflow has both commands/<name>.md and
+        # skills/**/<name>/SKILL.md, export the command instead of the skill so
+        # each workflow has exactly one user-facing entry. Pi receives both the
+        # skill body and a prompt template so `/refine` expands natively there.
         if [[ -f "$root/commands/$name.md" ]]; then
             remove_stale_symlink "$CLAUDE_SKILLS/$name"
             remove_stale_symlink "$CURSOR_SKILLS/$name"
@@ -186,6 +189,7 @@ link_from() {
             local name
             name=$(basename "$command")
             ensure_export "claude:command" "$name" "$command" "$CLAUDE_COMMANDS/$name" "$role"
+            ensure_export "cursor:command" "$name" "$command" "$CURSOR_COMMANDS/$name" "$role"
             ensure_export "dotagents:command" "$name" "$command" "$DOTAGENTS_COMMANDS/$name" "$role"
             ensure_export "pi:prompt" "$name" "$command" "$PI_PROMPTS/$name" "$role"
         done
@@ -222,7 +226,8 @@ link_from "$HOME/.skills-work" "overlay"
 
 prune_dead_links \
     "$CLAUDE_SKILLS" "$CLAUDE_AGENTS" "$CLAUDE_COMMANDS" "$CLAUDE_HOOKS" \
-    "$CURSOR_SKILLS" "$CURSOR_AGENTS" "$CODEX_SKILLS" "$PI_SKILLS" "$PI_PROMPTS" \
+    "$CURSOR_SKILLS" "$CURSOR_AGENTS" "$CURSOR_COMMANDS" "$CODEX_SKILLS" \
+    "$PI_SKILLS" "$PI_PROMPTS" \
     "$DOTAGENTS_SKILLS" "$DOTAGENTS_AGENTS" "$DOTAGENTS_COMMANDS" "$DOTAGENTS_HOOKS"
 
 if [[ "$CHANGED" -gt 0 ]]; then
