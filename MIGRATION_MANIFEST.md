@@ -1,5 +1,7 @@
 # Migration Manifest
 
+> Historical record of the completed dotbot-to-chezmoi migration (May 2026). Paths and decisions below may no longer match the repo; see README.md for the current layout.
+
 Exhaustive map of every dotbot entry → chezmoi target. Use this to run `chezmoi add` (or straight `cp`) at migration time.
 
 Legend:
