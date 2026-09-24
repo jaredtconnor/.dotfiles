@@ -19,6 +19,7 @@
         "default_profile": "ask",
         "model_parameters": []
     }, */
+    "icon_theme": "JetBrains New UI Icons (Light)",
     "agent_servers": {
         "cursor": {
             "type": "registry"
@@ -47,7 +48,39 @@
             "env": {}
         }
     },
-    "ssh_connections": {{ get $zpriv "zed_ssh_connections" | default (list) | toJson }},
+{{- /* Emitted in Zed's own layout and key order so Zed rewriting the file does not register as chezmoi drift. */}}
+{{- $zconns := get $zpriv "zed_ssh_connections" | default (list) }}
+{{- if not $zconns }}
+    "ssh_connections": [],
+{{- else }}
+    "ssh_connections": [
+{{- range $i, $c := $zconns }}{{ if $i }},{{ end }}
+        {
+            "host": {{ $c.host | toJson }},
+{{- if hasKey $c "username" }}
+            "username": {{ $c.username | toJson }},
+{{- end }}
+            "args": {{ get $c "args" | default (list) | toJson }},
+{{- $projects := get $c "projects" | default (list) }}
+{{- if not $projects }}
+            "projects": []
+{{- else }}
+            "projects": [
+{{- range $j, $p := $projects }}{{ if $j }},{{ end }}
+                {
+                    "paths": [
+{{- range $k, $path := $p.paths }}{{ if $k }},{{ end }}
+                        {{ $path | toJson }}
+{{- end }}
+                    ]
+                }
+{{- end }}
+            ]
+{{- end }}
+        }
+{{- end }}
+    ],
+{{- end }}
     "auto_update_extensions": {
         "html": false
     },
