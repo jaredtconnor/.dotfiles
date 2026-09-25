@@ -134,8 +134,10 @@ cmd_authorize() {
 
     head_ "Authorizing $key (from $src) on $target"
     warn  "  restrictions: $opts"
+    # ssh joins argv into one string that the remote shell re-splits, so quote
+    # the args locally or the entry loses its key after the first space.
     # shellcheck disable=SC2029
-    ssh -o ConnectTimeout=10 "$target" bash -s -- "$body" "$line" <<'REMOTE'
+    ssh -o ConnectTimeout=10 "$target" "bash -s -- $(printf '%q ' "$body" "$line")" <<'REMOTE'
         set -euo pipefail
         body="$1"; line="$2"
         umask 077; mkdir -p "$HOME/.ssh"; touch "$HOME/.ssh/authorized_keys"
