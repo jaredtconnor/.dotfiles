@@ -19,7 +19,9 @@
         "default_profile": "ask",
         "model_parameters": []
     }, */
-    "icon_theme": "JetBrains New UI Icons (Light)",
+    "cli_default_open_behavior": "existing_window",
+    "code_lens": "on",
+    "icon_theme": "VSCode Icons for Zed (Dark Official Icons)",
     "agent_servers": {
         "cursor": {
             "type": "registry"
@@ -39,8 +41,9 @@
         },
         "omp": {
             "default_config_options": {
+                "model": "anthropic/claude-sonnet-5-5",
                 "thinking": "high",
-                "mode": "plan"
+                "mode": "default"
             },
             "type": "custom",
             "command": {{ $ompCmd | toJson }},
@@ -89,7 +92,7 @@
             "api_url": "http://localhost:11434/v1"
         }
     },
-    "theme": "Tokyo Night",
+    "theme": "JetBrains Islands Dark",
     "buffer_font_family": "Berkeley Mono",
     // ----------------------------------------------
     // Appearance
