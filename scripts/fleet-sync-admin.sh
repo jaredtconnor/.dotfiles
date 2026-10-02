@@ -133,7 +133,7 @@ cmd_publish() {
         port="$(ssh_opt "$config" port)"
 
         if ssh -n -o BatchMode=yes -o ConnectTimeout=5 "$alias" true 2>/dev/null; then
-            origin="$(ssh -n -o BatchMode=yes -o ConnectTimeout=5 "$alias" 'git -C ~/.dotfiles remote get-url origin' 2>/dev/null || true)"
+            origin="$(ssh -n -o BatchMode=yes -o ConnectTimeout=5 "$alias" 'PATH=/opt/homebrew/bin:/usr/local/bin:$PATH git -C ~/.dotfiles remote get-url origin' 2>/dev/null || true)"
             if [[ -z "$origin" ]]; then
                 warn "  no ~/.dotfiles checkout: left out"
                 continue
