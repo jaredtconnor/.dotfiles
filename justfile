@@ -158,25 +158,16 @@ doctor-all:
 share-keys KEY="id_ed25519":
     @share-ssh-keys {{ KEY }}
 
+# No shebang: on Windows just needs cygpath for shebang recipes, plain recipes run under Git's sh.
 # Format lua + shell files (stylua + shfmt)
 format:
-    #!/usr/bin/env bash
-    set -euo pipefail
-    stylua .
-    sh_files=$(git ls-files '*.sh' '*.bash')
-    if [[ -n "$sh_files" ]]; then
-      shfmt -i 4 -ci -w $sh_files
-    fi
+    @stylua .
+    @files="$(git ls-files '*.sh' '*.bash')"; [ -z "$files" ] || shfmt -i 4 -ci -w $files
 
 # Check formatting without modifying files (exits non-zero on drift)
 format-check:
-    #!/usr/bin/env bash
-    set -euo pipefail
-    stylua --check .
-    sh_files=$(git ls-files '*.sh' '*.bash')
-    if [[ -n "$sh_files" ]]; then
-      shfmt -i 4 -ci -d $sh_files
-    fi
+    @stylua --check .
+    @files="$(git ls-files '*.sh' '*.bash')"; [ -z "$files" ] || shfmt -i 4 -ci -d $files
 
 # Fail-closed publication gate: scan working tree for secrets + private data
 verify-publication:
