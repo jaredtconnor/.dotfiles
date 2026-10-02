@@ -4,6 +4,7 @@
 #   just sync       - Apply chezmoi locally
 #   just sync-all   - Force-apply locally + push to all remote hosts
 #   just status     - Show chezmoi diff
+#   just refresh-externals - Re-pull externals (skill packs, agent-tooling, skills-work)
 #   just edit       - Open chezmoi source in editor
 #
 # See 'just --list' for all available commands
@@ -21,6 +22,10 @@ sync:
 # Apply chezmoi locally without prompting
 sync-force:
     @~/.dotfiles/scripts/sync-chezmoi.sh --force
+
+# Re-pull all chezmoi externals now, ignoring refreshPeriod (skill packs, agent-tooling, skills-work)
+refresh-externals:
+    @chezmoi apply --refresh-externals=always --include=externals --force
 
 # Force-apply locally then push to all remote hosts
 sync-all: sync-force
