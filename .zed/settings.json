@@ -1,0 +1,8 @@
+// Project settings for the dotfiles repo.
+//
+// Most files here are chezmoi templates. Formatters don't understand
+// `{{ ... }}` actions and split them into JSON braces, which breaks the
+// template, so formatting on save is off for this repo.
+{
+    "format_on_save": "off"
+}
