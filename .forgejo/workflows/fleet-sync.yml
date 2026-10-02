@@ -1,0 +1,24 @@
+name: fleet-sync
+# Apply dotfiles on every fleet host after a push to main. dotfiles and agent-tooling carry this
+# file; dotfiles-private carries the full-detail copy (FLEET_SYNC_LOG: full, plus the nightly
+# schedule and `just fleet-sync`). This repo is public, and so are its run logs, so this copy
+# prints counts only. The work is scripts/fleet-sync.sh from dotfiles.
+on:
+  push:
+    branches: [main]
+
+jobs:
+  sync:
+    # The runner that can reach every VLAN the fleet is on, the trusted one included.
+    runs-on: ubuntu-latest
+    steps:
+      - name: Sync the fleet
+        env:
+          FLEET_SYNC_SSH_KEY: ${{ secrets.FLEET_SYNC_SSH_KEY }}
+          FLEET_SYNC_HOSTS: ${{ vars.FLEET_SYNC_HOSTS }}
+          FLEET_SYNC_KNOWN_HOSTS: ${{ vars.FLEET_SYNC_KNOWN_HOSTS }}
+        run: |
+          command -v ssh >/dev/null || { apt-get update -qq && apt-get install -y -qq openssh-client; }
+          src="$(mktemp -d)"
+          git clone -q --depth 1 "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY_OWNER/dotfiles.git" "$src"
+          bash "$src/scripts/fleet-sync.sh"

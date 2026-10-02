@@ -1,16 +1,36 @@
 #!/usr/bin/env bash
 # Pull canonical repositories, apply chezmoi, and summarize external updates.
+#
+#   (no flag)      prompt when a managed file was edited locally
+#   --force        overwrite local edits
+#   --unattended   what fleet-sync runs over SSH: never prompts, never
+#                  overwrites a local edit. Everything else is applied; the
+#                  edited files are left alone and listed, and it exits 3.
 set -euo pipefail
 
 DOTFILES_DIR="${DOTFILES_DIR:-$HOME/.dotfiles}"
 PRIVATE_DIR="${PRIVATE_DOTFILES_DIR:-$HOME/.dotfiles-private}"
+# Fixed path: the forced command and an interactive shell must agree on it.
+LOCK="$HOME/.local/state/dotfiles-sync.lock"
 FORCE=0
+UNATTENDED=0
 
-if [[ "${1:-}" == "--force" ]]; then
-    FORCE=1
-elif [[ $# -gt 0 ]]; then
-    printf 'usage: %s [--force]\n' "$0" >&2
+usage() {
+    printf 'usage: %s [--force | --unattended]\n' "$0" >&2
     exit 2
+}
+
+[[ $# -le 1 ]] || usage
+case "${1:-}" in
+    "") ;;
+    --force) FORCE=1 ;;
+    --unattended) UNATTENDED=1 ;;
+    *) usage ;;
+esac
+
+if [[ "$UNATTENDED" -eq 1 ]]; then
+    # An SSH forced command starts with sshd's bare PATH.
+    export PATH="$HOME/.local/bin:/opt/homebrew/bin:/usr/local/bin:$PATH"
 fi
 
 short_sha() {
@@ -63,6 +83,35 @@ step() {
     fi
 }
 
+# One sync at a time per host: a fleet-sync can land while `just sync` runs,
+# and two pushes in a row start two fleet-syncs. The lock is a symlink whose
+# target is the holder's pid: creating it is atomic and it is never without a
+# pid (macOS has no flock). A holder that is gone, or whose pid now belongs to
+# something else after a reboot, is stale; renaming the link first means only
+# one waiter reclaims it.
+acquire_lock() {
+    local waited=0 holder
+    mkdir -p "$(dirname "$LOCK")"
+    until ln -s "$$" "$LOCK" 2>/dev/null; do
+        holder="$(readlink "$LOCK" 2>/dev/null || true)"
+        if [[ -n "$holder" ]] && ! ps -p "$holder" -o command= 2>/dev/null | grep -q sync-chezmoi; then
+            mv "$LOCK" "$LOCK.$$" 2>/dev/null && rm -f "$LOCK.$$"
+            continue
+        fi
+        if [[ "$waited" -eq 0 ]]; then
+            printf 'waiting for another sync on this host (pid %s)\n' "${holder:-?}"
+        elif [[ "$waited" -ge 900 ]]; then
+            printf 'gave up after %ds waiting for %s\n' "$waited" "$LOCK" >&2
+            exit 1
+        fi
+        sleep 5
+        waited=$((waited + 5))
+    done
+}
+
+acquire_lock
+trap 'rm -f "$LOCK"' EXIT
+
 step "Repositories"
 sync_repo "dotfiles" "$DOTFILES_DIR"
 sync_repo "private companion" "$PRIVATE_DIR"
@@ -72,7 +121,7 @@ init_args=(--no-tty --source "$DOTFILES_DIR")
 ext_args=(--refresh-externals=always --include=externals --force)
 # Managed files may prompt on local divergence: applied separately, interactively.
 managed_args=(--exclude=externals)
-if [[ "$FORCE" -eq 1 ]]; then
+if [[ "$FORCE" -eq 1 || "$UNATTENDED" -eq 1 ]]; then
     managed_args+=(--no-tty --force)
 fi
 chezmoi init "${init_args[@]}"
@@ -80,7 +129,7 @@ chezmoi init "${init_args[@]}"
 inventory="$(mktemp)"
 apply_output="$(mktemp)"
 before_inventory="$(mktemp)"
-trap 'rm -f "$inventory" "$apply_output" "$before_inventory"' EXIT
+trap 'rm -f "$inventory" "$apply_output" "$before_inventory" "$LOCK"' EXIT
 render_external_inventory >"$inventory"
 
 declare -a git_paths=()
@@ -173,6 +222,49 @@ if [[ "${#changes[@]}" -gt 0 ]]; then
 fi
 
 step "Managed files"
+# Locally edited targets, for --unattended to leave alone. chezmoi status
+# columns: 1 = target vs what chezmoi last wrote, 2 = target vs source. An
+# edit needs both (one that already matches the source is harmless). A target
+# chezmoi never wrote shows blank in column 1, so a pre-existing file that a
+# new source entry would replace is caught by its missing entryState instead.
+edited_targets() {
+    local state line
+    state="$(chezmoi state dump --format=json)"
+    chezmoi status --exclude=externals,scripts | while IFS= read -r line; do
+        if [[ "${line:0:1}" != " " && "${line:1:1}" != " " ]]; then
+            printf '%s\n' "${line:3}"
+        elif [[ "${line:0:2}" == " M" ]] && ! grep -qF "\"$HOME/${line:3}\":" <<<"$state"; then
+            printf '%s\n' "${line:3}"
+        fi
+    done
+}
+
+diverged=""
+if [[ "$UNATTENDED" -eq 1 ]]; then
+    diverged="$(edited_targets)"
+fi
+if [[ -n "$diverged" ]]; then
+    # Apply every other target one at a time (not recursing, so a parent
+    # directory doesn't bring an edited file back in), then the scripts.
+    # run_before_ scripts therefore run after the files here; they are all
+    # run_once installers, which only rerun when their content changes.
+    targets=()
+    while IFS= read -r target; do
+        grep -qxF -e "$target" <<<"$diverged" || targets+=("$HOME/$target")
+    done < <(chezmoi managed --exclude=externals,scripts)
+    # With no targets, chezmoi would apply everything, the edits included.
+    if [[ ${#targets[@]} -gt 0 ]] && ! chezmoi apply "${managed_args[@]}" --recursive=false "${targets[@]}"; then
+        printf '  chezmoi apply failed.\n' >&2
+        exit 1
+    fi
+    if ! chezmoi apply --include=scripts --no-tty --force; then
+        printf '  chezmoi apply failed.\n' >&2
+        exit 1
+    fi
+    printf 'Edited locally, so left alone (run "just sync" on this host to resolve):\n' >&2
+    sed 's|^|  ~/|' <<<"$diverged" >&2
+    exit 3
+fi
 # Foreground so chezmoi's overwrite/skip prompt is answerable on divergence;
 # quiet by design (no external git noise). run_ scripts stream their output.
 if ! chezmoi apply "${managed_args[@]}"; then

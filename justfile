@@ -119,6 +119,18 @@ sync-host HOST:
     [[ -n "$output" ]] && echo "$output"
     exit $rc
 
+# Sync the fleet now, with per-host logs (the fleet-sync workflow in dotfiles-private)
+fleet-sync:
+    @bash scripts/fleet-sync-admin.sh run
+
+# New fleet-sync key: Forgejo secret, companion .pub, authorized on every host
+fleet-sync-setup:
+    @bash scripts/fleet-sync-admin.sh rotate-key
+
+# Re-authorize the key and republish the host list (after adding a host)
+fleet-sync-publish:
+    @bash scripts/fleet-sync-admin.sh publish
+
 # Show what chezmoi would change
 status:
     @chezmoi diff || true
