@@ -31,6 +31,12 @@ esac
 if [[ "$UNATTENDED" -eq 1 ]]; then
     # An SSH forced command starts with sshd's bare PATH.
     export PATH="$HOME/.local/bin:/opt/homebrew/bin:/usr/local/bin:$PATH"
+    # An SSH session can't reach the 1Password agent, so a Mac pulls with its
+    # read-only Forgejo deploy key. Only here: in ~/.ssh/config it would take
+    # over pushes too. Servers already pull with keys from config.local.d.
+    if [[ -f "$HOME/.ssh/dotfiles-deploy" ]]; then
+        export GIT_SSH_COMMAND="ssh -o IdentityAgent=none -o IdentitiesOnly=yes -i $HOME/.ssh/dotfiles-deploy"
+    fi
 fi
 
 short_sha() {

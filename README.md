@@ -82,6 +82,8 @@ any machine:  edit -> commit -> push to Forgejo
 
 `.forgejo/workflows/fleet-sync.yml` is in all three repos. It runs on the runner that can reach every VLAN, and `scripts/fleet-sync.sh` SSHes to every host at once with a dedicated key. On each host that key is pinned in `authorized_keys` to one command, `sync-chezmoi.sh --unattended`, so the key can do nothing except make a host pull from Forgejo and apply.
 
+An SSH session can't use the 1Password agent, so each Mac in the fleet pulls with its own read-only Forgejo deploy key, `~/.ssh/dotfiles-deploy`. It's registered on `dotfiles`, `dotfiles-private`, `agent-tooling` and `pi-agent-setup`, and only `--unattended` uses it (via `GIT_SSH_COMMAND`), so pushes still go through 1Password. To add a Mac: `manage-service-keys new --host <mac> --type dotfiles`, then add the `.pub` as a read-only deploy key on those four repos.
+
 An unattended sync never prompts and never overwrites a file you edited on that host. It applies everything else, lists the edited files, and leaves them for a `just sync` there. The run fails only when a reachable host failed. Hosts that are asleep are listed and caught up by the nightly run. Third-party skill packs change upstream, not by a push, so the nightly run is also what picks them up.
 
 Forgejo is reachable from the internet, and run logs of a public repo are public. So the `dotfiles` and `agent-tooling` copies print counts only. Per-host output comes from the `dotfiles-private` copy, which also carries the nightly schedule and is what `just fleet-sync` starts.
