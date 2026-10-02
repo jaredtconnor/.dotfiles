@@ -88,8 +88,8 @@ elif [[ "$OS" == "linux" ]]; then
         debian | ubuntu | linuxmint | pop)
             if ! command_exists git || ! command_exists curl || ! dpkg -s build-essential &>/dev/null; then
                 info "Installing essentials via apt..."
-                as_root apt-get update -qq --allow-releaseinfo-change \
-                    || warn "apt-get update reported errors (likely a broken third-party repo); continuing with cached indexes"
+                as_root apt-get update -qq --allow-releaseinfo-change ||
+                    warn "apt-get update reported errors (likely a broken third-party repo); continuing with cached indexes"
                 as_root apt-get install -y -qq \
                     build-essential curl wget git tmux unzip locales \
                     libssl-dev zlib1g-dev libncurses5-dev libreadline-dev \

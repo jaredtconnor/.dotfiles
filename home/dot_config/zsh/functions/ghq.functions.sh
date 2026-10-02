@@ -34,21 +34,34 @@ repo() {
 
 # clone <spec...> — clone into the ghq root, then cd into the new repo.
 clone() {
-    command -v ghq >/dev/null 2>&1 || { echo "clone: ghq not on PATH" >&2; return 1; }
-    [[ $# -ge 1 ]] || { echo "usage: clone <url | host/owner/repo | owner/repo>" >&2; return 1; }
+    command -v ghq >/dev/null 2>&1 || {
+        echo "clone: ghq not on PATH" >&2
+        return 1
+    }
+    [[ $# -ge 1 ]] || {
+        echo "usage: clone <url | host/owner/repo | owner/repo>" >&2
+        return 1
+    }
     ghq get "$@" || return 1
     # Derive the repo name from the last positional arg to cd into it.
     local spec name dest
     for spec in "$@"; do :; done
-    name="${spec##*/}"; name="${name%.git}"
+    name="${spec##*/}"
+    name="${name%.git}"
     dest=$(ghq list --full-path | fzf --filter "$name" 2>/dev/null | head -1)
-    [[ -n "$dest" ]] && { cd "$dest" || return 1; _repo_tmux_rename "$dest"; }
+    [[ -n "$dest" ]] && {
+        cd "$dest" || return 1
+        _repo_tmux_rename "$dest"
+    }
 }
 
 # wt — fuzzy-pick a git worktree (across all repos) and cd into it.
 # Relies on gwq shell integration (cd.launch_shell=false) sourced below.
 wt() {
-    command -v gwq >/dev/null 2>&1 || { echo "wt: gwq not on PATH" >&2; return 1; }
+    command -v gwq >/dev/null 2>&1 || {
+        echo "wt: gwq not on PATH" >&2
+        return 1
+    }
     gwq cd -g "$@" && _repo_tmux_rename "$PWD"
 }
 

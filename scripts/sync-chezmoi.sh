@@ -103,7 +103,7 @@ for path in "${git_paths[@]}"; do
 done
 
 step "Externals"
-external_total=$(( ${#git_paths[@]} + archive_count ))
+external_total=$((${#git_paths[@]} + archive_count))
 printf '  refreshing %d externals (this can take a while)...\n' "$external_total"
 # Raw git fetch/diff output is captured and discarded on success; the per-repo
 # summary below reports what actually changed. Show a live spinner meanwhile.

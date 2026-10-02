@@ -14,7 +14,7 @@ alias regen='zgenom reset;source ~/.zshrc'
 # Main directories — home buckets (created by `dev-setup`)
 alias .f='cd $(chezmoi source-path 2>/dev/null || echo ~/.dotfiles)'
 alias .c='cd ~/Code'
-alias .d='cd ~/Code'      # legacy: ~/dev -> ~/Code
+alias .d='cd ~/Code' # legacy: ~/dev -> ~/Code
 alias .n='cd ~/Notes'
 alias .dt='cd ~/Data'
 alias .t='cd ~/Tools'
@@ -49,7 +49,7 @@ hs() { history | grep -i "$1"; }
 unalias pi 2>/dev/null
 pi() {
     case "$1" in
-        install|remove|uninstall|update|list|config)
+        install | remove | uninstall | update | list | config)
             command pi "$@"
             ;;
         *)
