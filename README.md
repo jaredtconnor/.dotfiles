@@ -66,16 +66,41 @@ This produces the following machine classes. Hostnames live in the companion, no
 
 ## Fleet Distribution
 
-Changes flow one way. You edit and commit on a workstation, push to Forgejo (which mirrors to GitHub), and then each machine pulls and applies. Hosts don't update on a schedule; they only change when a sync runs.
+Changes flow one way. You edit and commit, push to Forgejo (which mirrors to GitHub), and then each machine pulls and applies. A push to `main` of `dotfiles`, `dotfiles-private`, or `agent-tooling` does the fan-out for you (see [Fleet sync on push](#fleet-sync-on-push)); the `just` recipes do the same by hand.
 
 ```
-workstation:  edit -> commit -> push to Forgejo
+any machine:  edit -> commit -> push to Forgejo
                                       |
+  fleet-sync       Forgejo workflow on push + nightly: every fleet host, unattended
   just sync        this machine: pull both repos, refresh externals, apply
   just sync-all    this machine, then every host in ~/.ssh/hosts over SSH
   just sync-host   one host from ~/.ssh/hosts
-  work laptop      not in the push list; run `just sync` on it directly
+  work laptop      not in the fleet; run `just sync` on it directly
 ```
+
+### Fleet Sync on Push
+
+`.forgejo/workflows/fleet-sync.yml` is in all three repos. It runs on the runner that can reach every VLAN, and `scripts/fleet-sync.sh` SSHes to every host at once with a dedicated key. On each host that key is pinned in `authorized_keys` to one command, `sync-chezmoi.sh --unattended`, so the key can do nothing except make a host pull from Forgejo and apply.
+
+An SSH session can't use the 1Password agent, so each Mac in the fleet pulls with its own read-only Forgejo deploy key, `~/.ssh/dotfiles-deploy`. It's registered on `dotfiles`, `dotfiles-private`, `agent-tooling` and `pi-agent-setup`, and only `--unattended` uses it (via `GIT_SSH_COMMAND`), so pushes still go through 1Password. To add a Mac: `manage-service-keys new --host <mac> --type dotfiles`, then add the `.pub` as a read-only deploy key on those four repos.
+
+An unattended sync never prompts and never overwrites a file you edited on that host. It applies everything else, lists the edited files, and leaves them for a `just sync` there. The run fails only when a reachable host failed. Hosts that are asleep are listed and caught up by the nightly run. Third-party skill packs change upstream, not by a push, so the nightly run is also what picks them up.
+
+Forgejo is reachable from the internet, and run logs of a public repo are public. So the `dotfiles` and `agent-tooling` copies print counts only. Per-host output comes from the `dotfiles-private` copy, which also carries the nightly schedule and is what `just fleet-sync` starts.
+
+| Piece | Where |
+|---|---|
+| Private key | User-level Forgejo secret `FLEET_SYNC_SSH_KEY` (exists nowhere else) |
+| Public key | Companion `fleet/fleet-sync.pub` |
+| Host list, host keys | User-level Forgejo variables `FLEET_SYNC_HOSTS`, `FLEET_SYNC_KNOWN_HOSTS` |
+
+| Command | Does |
+|---|---|
+| `just fleet-sync` | Run the workflow now, without a push, with per-host logs (in `dotfiles-private`) |
+| `just fleet-sync-publish` | Authorize the key on every host and republish the host list; run after adding a host |
+| `just fleet-sync-setup` | New key (first setup, or rotation), then publish. Commit the companion's `fleet/fleet-sync.pub` afterwards |
+
+The fleet is the push list plus the machine you publish from, minus hosts without a `~/.dotfiles` checkout and hosts that pull from the GitHub mirror (the mirror lags the push). Host keys come from your `known_hosts`, so SSH to a new host once before publishing.
 
 ### What a sync does
 
@@ -84,7 +109,9 @@ workstation:  edit -> commit -> push to Forgejo
 1. Runs `git pull --ff-only origin main` in `~/.dotfiles` and `~/.dotfiles-private`. A diverged checkout fails here instead of merging.
 2. Runs `chezmoi init`, so profile changes made in the companion take effect.
 3. Refreshes all externals without prompting, then reports which Git externals changed.
-4. Applies managed files. By default it's interactive, so you can answer overwrite prompts when a local file has diverged. `--force` overwrites without asking; `sync-force`, `sync-all`, and `sync-host` all use it.
+4. Applies managed files. By default it's interactive, so you can answer overwrite prompts when a local file has diverged. `--force` overwrites without asking; `sync-force`, `sync-all`, and `sync-host` all use it. `--unattended` (fleet sync) never asks and never overwrites: it skips the files edited locally and exits 3 listing them.
+
+Only one sync runs on a host at a time; a second one waits for the first.
 
 For remote hosts, the script is piped over SSH (`ssh host bash -s -- --force`). It runs on the remote host and pulls from there.
 
@@ -121,6 +148,7 @@ The work laptop is left out on purpose. It's network-isolated from the homelab, 
 5. On the new host, run `install.sh` with `DOTFILES_PRIVATE_REPO_URL` set, and `DOTFILES_REPO_URL` set to the Forgejo URL if the host should pull from Forgejo rather than the GitHub mirror.
 6. For headless hosts, add a Forgejo deploy key under `~/.ssh/config.local.d/`.
 7. From your workstation, run `just sync-host <name>` to confirm push works.
+8. Run `just fleet-sync-publish` so pushes reach it too.
 
 ### Server Hosts
 
@@ -182,6 +210,9 @@ install.sh / install.ps1
 install.sh / install.ps1                # bootstrap
 justfile                                # sync and fleet recipes
 scripts/sync-chezmoi.sh                 # pull + apply, used locally and over SSH
+scripts/fleet-sync.sh                   # fleet-sync workflow: unattended sync on every host
+scripts/fleet-sync-admin.sh             # fleet-sync key, host authorization, Forgejo variables
+.forgejo/workflows/fleet-sync.yml       # sync the fleet on push to main (counts-only log)
 scripts/verify-publication.sh           # publication gate
 policy/publication-policy.yaml          # public/private classification per path
 tests/                                  # profile rendering + policy tests
@@ -263,7 +294,7 @@ just verify-publication-history   # same, over all reachable history
 
 1. **Hostname gating, with one exception.** Identity depends on the machine, not on where a repo lives. The single `includeIf gitdir:` block covers `~/.dotfiles` itself, which always pushes with the personal email, including from the work machine. See `dot_config/git/config.personal`.
 2. **Public repo plus private companion.** Everything reusable is public. Private values are supplied by the companion when templates render, so a public-only checkout still applies cleanly.
-3. **Push over SSH, not a pull timer.** A workstation drives fleet updates, so no host changes unless you run a sync.
+3. **Push over SSH, not a pull timer.** Hosts change only when something was pushed (or the nightly run catches them up), never on their own clock. The fleet-sync key is pinned to the sync command, so the workflow's credential can't open a shell anywhere. That protects the transport, not the payload: whoever can push to `main` of these three repos can run `run_` scripts on every host within a minute.
 4. **Server profile is an allowlist.** New configs stay off infrastructure hosts until they're explicitly allowed.
 5. **Reusable tooling plus work overlay.** `agent-tooling` goes on every non-server machine; the work overlay only goes on work machines.
 6. **VS Code as difftool/mergetool.** Git uses `code --wait --diff` and `code --wait --merge`. Delta handles terminal diffs.
