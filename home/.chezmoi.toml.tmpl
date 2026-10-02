@@ -32,11 +32,33 @@
 {{-   $work = promptBoolOnce . "work" "Is this a work machine" -}}
 {{- end -}}
 
+{{- /* Work machines use Beyond Compare for chezmoi diff/merge when installed.
+       Windows installs don't put BComp.exe on PATH, so check install dirs too. */ -}}
+{{- $bcomp := "" -}}
+{{- if $work -}}
+{{-   $bcomp = lookPath "bcomp" -}}
+{{-   if and (not $bcomp) (eq .chezmoi.os "windows") -}}
+{{-     $bcomp = findExecutable "BComp.exe" (list
+          (joinPath (env "LOCALAPPDATA") "Programs" "Beyond Compare 5")
+          (joinPath (env "ProgramFiles") "Beyond Compare 5")
+          (joinPath (env "LOCALAPPDATA") "Programs" "Beyond Compare 4")
+          (joinPath (env "ProgramFiles") "Beyond Compare 4")) -}}
+{{-   end -}}
+{{- end -}}
+
 sourceDir = {{ joinPath .chezmoi.homeDir ".dotfiles" | quote }}
 
 [edit]
     command = "nvim"
-{{ if lookPath "delta" }}
+{{ if $bcomp }}
+[diff]
+    command = {{ $bcomp | quote }}
+    args = [{{ "{{ .Destination }}" | quote }}, {{ "{{ .Target }}" | quote }}]
+
+[merge]
+    command = {{ $bcomp | quote }}
+    args = [{{ "{{ .Destination }}" | quote }}, {{ "{{ .Source }}" | quote }}, {{ "{{ .Target }}" | quote }}, {{ "{{ .Source }}" | quote }}]
+{{ else if lookPath "delta" }}
 [diff]
     pager = "delta"
 {{ end }}
