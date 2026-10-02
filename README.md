@@ -254,7 +254,7 @@ Defined in `.chezmoiexternal.toml.tmpl` and refreshed weekly by `chezmoi apply` 
 | Skill packs from `~/.agent-tooling/external-skills.json` | `~/.skills-external/<name>` | Non-server; appear on the second apply of a new machine |
 | Work skills overlay (work GitHub org) | `~/.skills-work` | Work only |
 
-To force a refresh: `just refresh-externals` (runs `chezmoi apply --refresh-externals=always --include=externals --force`). Skills that are new to a pack get linked into the agent runtimes on the next `just sync`.
+To force a refresh: `just refresh-externals`. It runs `chezmoi apply --refresh-externals=always --include=externals --force`, then the skills mirror script on its own (`--include=externals` skips scripts), so skills new to a pack are linked into the agent runtimes right away.
 
 ### AI Tooling Split
 

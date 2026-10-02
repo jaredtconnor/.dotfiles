@@ -23,9 +23,19 @@ sync:
 sync-force:
     @~/.dotfiles/scripts/sync-chezmoi.sh --force
 
-# Re-pull all chezmoi externals now, ignoring refreshPeriod (skill packs, agent-tooling, skills-work)
-refresh-externals:
+# --include=externals skips scripts, so the skills mirror runs separately afterwards
+# Re-pull all chezmoi externals now, ignoring refreshPeriod, then link new pack skills into agent runtimes
+refresh-externals: && _link-skills
     @chezmoi apply --refresh-externals=always --include=externals --force
+
+# Run only the skills mirror script; `--include=scripts` would also rerun every other run_after script
+[unix]
+_link-skills:
+    @bash -c "$(chezmoi execute-template < "$(chezmoi source-path)/.chezmoiscripts/run_after_symlink-ai-mirror.sh.tmpl")"
+
+[windows]
+_link-skills:
+    @f="$(mktemp --suffix=.ps1)" && chezmoi execute-template < "$(chezmoi source-path)/.chezmoiscripts/run_after_symlink-ai-mirror.ps1.tmpl" > "$f" && powershell -NoProfile -ExecutionPolicy Bypass -File "$(cygpath -w "$f")"; rc=$?; rm -f "$f"; exit $rc
 
 # Force-apply locally then push to all remote hosts
 sync-all: sync-force
