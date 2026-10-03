@@ -2,7 +2,8 @@
 # Run an unattended sync on every fleet host at once, then summarize.
 #
 # Runs in the fleet-sync Forgejo workflow (dotfiles, dotfiles-private and
-# agent-tooling each carry a copy). Each host pins the key to
+# agent-tooling each carry a copy; life-ops carries one narrowed to the Hermes
+# host). Each host pins the key to
 # `sync-chezmoi.sh --unattended` in its authorized_keys, so connecting is the
 # whole request. See scripts/fleet-sync-admin.sh for the host-side setup.
 #

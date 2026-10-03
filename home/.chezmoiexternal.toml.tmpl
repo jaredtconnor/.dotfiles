@@ -87,6 +87,21 @@
     type = "git-repo"
     url = "{{ .forgejo_base }}/agent-tooling.git"
     refreshPeriod = "168h"
+
+{{- /* Personal-life skills (planning, goals) for Hermes. Only the Hermes host
+       (identity.hermes_host in the companion) clones them, and Hermes loads
+       ~/.life-ops/skills via skills.external_dirs. They are not mirrored into
+       the coding agents. */ -}}
+{{- $ident := dict }}
+{{- $identFile := joinPath .chezmoi.homeDir ".dotfiles-private" "data.yaml" }}
+{{- if stat $identFile }}{{ $ident = (get (include $identFile | fromYaml) "identity" | default dict) }}{{ end }}
+{{- if eq .chezmoi.hostname (get $ident "hermes_host" | default "") }}
+
+[".life-ops"]
+    type = "git-repo"
+    url = "{{ .forgejo_base }}/life-ops.git"
+    refreshPeriod = "168h"
+{{- end }}
 {{- end }}
 
 # -----------------------------------------------------------------------------

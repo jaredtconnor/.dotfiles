@@ -66,7 +66,7 @@ This produces the following machine classes. Hostnames live in the companion, no
 
 ## Fleet Distribution
 
-Changes flow one way. You edit and commit, push to Forgejo (which mirrors to GitHub), and then each machine pulls and applies. A push to `main` of `dotfiles`, `dotfiles-private`, or `agent-tooling` does the fan-out for you (see [Fleet sync on push](#fleet-sync-on-push)); the `just` recipes do the same by hand.
+Changes flow one way. You edit and commit, push to Forgejo (which mirrors to GitHub), and then each machine pulls and applies. A push to `main` of `dotfiles`, `dotfiles-private`, or `agent-tooling` does the fan-out for you, and a push to `life-ops` syncs the Hermes host (see [Fleet sync on push](#fleet-sync-on-push)); the `just` recipes do the same by hand.
 
 ```
 any machine:  edit -> commit -> push to Forgejo
@@ -80,9 +80,9 @@ any machine:  edit -> commit -> push to Forgejo
 
 ### Fleet Sync on Push
 
-`.forgejo/workflows/fleet-sync.yml` is in all three repos. It runs on the runner that can reach every VLAN, and `scripts/fleet-sync.sh` SSHes to every host at once with a dedicated key. On each host that key is pinned in `authorized_keys` to one command, `sync-chezmoi.sh --unattended`, so the key can do nothing except make a host pull from Forgejo and apply.
+`.forgejo/workflows/fleet-sync.yml` is in all three repos, plus `life-ops`, whose copy narrows `FLEET_SYNC_HOSTS` to the Hermes host, the only host that clones it. It runs on the runner that can reach every VLAN, and `scripts/fleet-sync.sh` SSHes to every host at once with a dedicated key. On each host that key is pinned in `authorized_keys` to one command, `sync-chezmoi.sh --unattended`, so the key can do nothing except make a host pull from Forgejo and apply.
 
-An SSH session can't use the 1Password agent, so each Mac in the fleet pulls with its own read-only Forgejo deploy key, `~/.ssh/dotfiles-deploy`. It's registered on `dotfiles`, `dotfiles-private`, `agent-tooling` and `pi-agent-setup`, and only `--unattended` uses it (via `GIT_SSH_COMMAND`), so pushes still go through 1Password. To add a Mac: `manage-service-keys new --host <mac> --type dotfiles`, then add the `.pub` as a read-only deploy key on those four repos.
+An SSH session can't use the 1Password agent, so each Mac in the fleet pulls with its own read-only Forgejo deploy key, `~/.ssh/dotfiles-deploy`. It's registered on `dotfiles`, `dotfiles-private`, `agent-tooling` and `pi-agent-setup` (and on `life-ops` for the Hermes host only), and only `--unattended` uses it (via `GIT_SSH_COMMAND`), so pushes still go through 1Password. To add a Mac: `manage-service-keys new --host <mac> --type dotfiles`, then add the `.pub` as a read-only deploy key on those four repos.
 
 An unattended sync never prompts and never overwrites a file you edited on that host. It applies everything else, lists the edited files, and leaves them for a `just sync` there. The run fails only when a reachable host failed. Hosts that are asleep are listed and caught up by the nightly run. Third-party skill packs change upstream, not by a push, so the nightly run is also what picks them up.
 
@@ -251,6 +251,7 @@ Defined in `.chezmoiexternal.toml.tmpl` and refreshed weekly by `chezmoi apply` 
 | NvChad starter | `~/.config/nvchad-nvim` | Non-server |
 | `pi-agent-setup` (Forgejo) | `~/.pi/agent` | Non-server, with companion |
 | `agent-tooling` (Forgejo, public mirror on GitHub) | `~/.agent-tooling` | Non-server, with companion |
+| `life-ops` (Forgejo, private) | `~/.life-ops` | Hermes host only (`identity.hermes_host`) |
 | Skill packs from `~/.agent-tooling/external-skills.json` | `~/.skills-external/<name>` | Non-server; appear on the second apply of a new machine |
 | Work skills overlay (work GitHub org) | `~/.skills-work` | Work only |
 
@@ -259,6 +260,8 @@ To force a refresh: `just refresh-externals`. It runs `chezmoi apply --refresh-e
 ### AI Tooling Split
 
 Reusable AI tooling lives in `agent-tooling`, with third-party skill packs in `~/.skills-external` and work-only content in the `~/.skills-work` overlay. `run_after_symlink-ai-mirror.sh` flat-symlinks skills, agents, commands, and hooks from those sources into Claude Code, Cursor, Codex, Pi, and `~/.agents`. It also prunes dead links. When a workflow exists as both a command and a skill, only the command is exported, so it appears once as a slash entry.
+
+Personal-life skills for Hermes (planning, goals) live in the private `life-ops` repo instead. Only the Hermes host clones it, and Hermes loads `~/.life-ops/skills` through `skills.external_dirs` in its config. Those skills are not mirrored into the coding agents.
 
 Machine-specific AI settings and ccstatusline config live directly in this repo under `home/dot_claude/` and `home/dot_config/ccstatusline/`.
 
