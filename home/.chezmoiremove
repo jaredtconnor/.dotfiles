@@ -1,0 +1,5 @@
+# Retired targets chezmoi deletes on apply.
+
+# sync-notes: rsync between a Mac and the NAS, replaced by Obsidian Sync (notes-sync).
+.local/bin/sync-notes
+Library/LaunchAgents/com.jared.sync-notes.plist

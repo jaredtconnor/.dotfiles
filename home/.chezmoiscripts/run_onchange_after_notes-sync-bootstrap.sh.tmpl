@@ -1,0 +1,46 @@
+#!/usr/bin/env bash
+{{/*
+    Bootstrap notes-sync on the Hermes host:
+      1. Install the pinned obsidian-headless (ob) into its own npm prefix.
+      2. (Re)load the com.jared.notes-sync LaunchAgent.
+    Re-runs whenever the pinned version, the plist, or the launcher changes (hashes below).
+    Gated to the Hermes host via .chezmoiignore; darwin-guarded here too. The vault itself
+    is set up once by hand: README, "Notes sync".
+
+    plist:    {{ include "Library/LaunchAgents/com.jared.notes-sync.plist.tmpl" | sha256sum }}
+    launcher: {{ include "dot_local/bin/executable_notes-sync" | sha256sum }}
+*/}}
+{{ if eq .chezmoi.os "darwin" -}}
+set -euo pipefail
+
+# Same version discovery's obsidian-sync image is built from (homelab-infra).
+OB_VERSION="0.0.14"
+PREFIX="$HOME/.local/share/obsidian-headless"
+PLIST="$HOME/Library/LaunchAgents/com.jared.notes-sync.plist"
+NODE_BIN="/opt/homebrew/opt/node/bin"
+
+# 1. Install ob, unless the pinned version is already there.
+installed="$(cat "$PREFIX/node_modules/obsidian-headless/package.json" 2>/dev/null |
+    sed -n 's/.*"version": *"\([^"]*\)".*/\1/p' | head -1)"
+if [[ "$installed" != "$OB_VERSION" ]]; then
+    if [[ ! -x "$NODE_BIN/npm" ]]; then
+        echo "notes-sync: WARN Homebrew node not found at $NODE_BIN; skipping ob install."
+        exit 0
+    fi
+    echo "notes-sync: installing obsidian-headless@$OB_VERSION -> $PREFIX"
+    PATH="$NODE_BIN:$PATH" npm install --prefix "$PREFIX" --no-audit --no-fund --loglevel=error \
+        "obsidian-headless@$OB_VERSION"
+fi
+
+# 2. (Re)load the LaunchAgent. launchd won't create the log directory itself.
+mkdir -p "$HOME/.local/share/notes-sync"
+if [[ -f "$PLIST" ]]; then
+    uid="$(id -u)"
+    launchctl bootout "gui/$uid/com.jared.notes-sync" 2>/dev/null || true
+    launchctl bootstrap "gui/$uid" "$PLIST" 2>/dev/null ||
+        launchctl load "$PLIST" 2>/dev/null || true
+    echo "notes-sync: LaunchAgent (re)loaded"
+fi
+{{ else -}}
+exit 0
+{{ end -}}

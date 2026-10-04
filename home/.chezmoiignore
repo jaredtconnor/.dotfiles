@@ -90,7 +90,6 @@ AppData
 .local/bin/npmjs
 .local/bin/sesh-picker
 .local/bin/share-ssh-keys
-.local/bin/sync-notes
 {{- end }}
 
 {{- if ne .chezmoi.os "linux" }}
@@ -111,6 +110,11 @@ AppData
 # so this file is ignored everywhere without one. Secrets (.env, auth.json)
 # are never managed by chezmoi.
 .hermes/config.yaml
+# notes-sync keeps the agent's vault in Obsidian Sync (ob as a LaunchAgent). Target paths:
+# chezmoi strips the run_onchange_after_ prefix and .tmpl suffix before matching.
+.local/bin/notes-sync
+Library/LaunchAgents/com.jared.notes-sync.plist
+.chezmoiscripts/notes-sync-bootstrap.sh
 {{- end }}
 
 {{- if not (has .chezmoi.hostname $heliumHosts) }}

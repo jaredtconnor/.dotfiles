@@ -51,7 +51,7 @@ Secrets live in neither repo. The 1Password SSH agent serves private keys, `~/.e
 Some features are limited to specific hosts listed in the companion:
 
 - `ssh.headless_hosts`: agent VMs with no 1Password. Their SSH config uses the on-disk `agent-claude` key for homelab hosts instead of the 1Password agent.
-- `identity.hermes_host`: the only host that gets `~/.hermes/config.yaml`.
+- `identity.hermes_host`: the only host that gets `~/.hermes/config.yaml`, the `life-ops` clone, and notes-sync.
 - `identity.helium_hosts`: the only hosts that get helium-sync (browser sync LaunchAgent).
 
 This produces the following machine classes. Hostnames live in the companion, not here.
@@ -264,6 +264,38 @@ Reusable AI tooling lives in `agent-tooling`, with third-party skill packs in `~
 Personal-life skills for Hermes (planning, goals) live in the private `life-ops` repo instead. Only the Hermes host clones it, and Hermes loads `~/.life-ops/skills` through `skills.external_dirs` in its config. Those skills are not mirrored into the coding agents.
 
 Machine-specific AI settings and ccstatusline config live directly in this repo under `home/dot_claude/` and `home/dot_config/ccstatusline/`.
+
+### Notes Sync
+
+Obsidian Sync is the hub for the personal vault. Every device holds a copy and syncs through it: the Obsidian app on the Macs and phone, and two always-on headless clients (Obsidian's `ob` CLI, from `obsidian-headless`). One runs in a container on a homelab host, writing to the NAS share over NFS (homelab-infra, `obsidian-sync`). That's the backup copy, so edit notes on a device, never on the NAS share directly. The other runs on the Hermes host, so the agent's edits sync without the Obsidian app open:
+
+```
+Hermes host: notes-sync LaunchAgent -> ob sync --continuous -> ~/Notes/personal (the agent reads/writes)
+                                              |
+                                        Obsidian Sync <-> Obsidian app (Macs, phone)
+                                              |
+                     homelab container (ob) -> NFS -> NAS
+```
+
+`run_onchange_after_notes-sync-bootstrap.sh` installs the pinned `ob` into `~/.local/share/obsidian-headless` (with Homebrew's unversioned node) and loads `com.jared.notes-sync`. `notes-sync` refuses to start, and launchd retries once a minute, while the vault is missing, has no `.obsidian` folder or notes, or isn't set up for Obsidian Sync. `ob` would sync an empty folder as "delete every note". Logs go to `~/.local/share/notes-sync/launchd.log`.
+
+One-time setup on the Hermes host. The login is interactive, so run it yourself:
+
+```sh
+launchctl bootout gui/$(id -u)/com.jared.notes-sync      # stop retries during setup
+mv ~/Notes/personal ~/Notes/personal.archive-$(date +%F)  # if a stale copy exists
+export PATH="$HOME/.local/share/obsidian-headless/node_modules/.bin:/opt/homebrew/opt/node/bin:$PATH"
+ob login
+ob sync-list-remote                                       # note the vault name
+mkdir -p ~/Notes/personal
+ob sync-setup --vault <vault> --path ~/Notes/personal --device-name <host>
+ob sync-config --path ~/Notes/personal --mode pull-only   # nothing can push yet
+ob sync --path ~/Notes/personal                           # download; compare note count with another device
+ob sync-config --path ~/Notes/personal --mode bidirectional
+launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.jared.notes-sync.plist
+```
+
+Then point `OBSIDIAN_VAULT_PATH` in `~/.hermes/.env` at `~/Notes/personal` and restart the Hermes gateway. `ob sync-status --path ~/Notes/personal` shows the state at any time. This replaces `sync-notes`, the rsync loop between a Mac and the NAS; `.chezmoiremove` deletes its script and LaunchAgent.
 
 ## Common Commands
 

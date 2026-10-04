@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+{{/*
+    Unload the retired sync-notes LaunchAgent before .chezmoiremove deletes its plist and
+    script. Its rsync-to-NAS loop is replaced by Obsidian Sync (notes-sync on the Hermes host,
+    the Obsidian app everywhere else). The log directory is left in place.
+*/}}
+{{ if eq .chezmoi.os "darwin" -}}
+set -euo pipefail
+launchctl bootout "gui/$(id -u)/com.jared.sync-notes" 2>/dev/null || true
+{{ else -}}
+exit 0
+{{ end -}}
