@@ -277,14 +277,14 @@ Hermes host: notes-sync LaunchAgent -> ob sync --continuous -> ~/Notes/personal 
                      homelab container (ob) -> NFS -> NAS
 ```
 
-`run_onchange_after_notes-sync-bootstrap.sh` installs the pinned `ob` into `~/.local/share/obsidian-headless` (with Homebrew's unversioned node) and loads `com.jared.notes-sync`. `notes-sync` refuses to start, and launchd retries once a minute, while the vault is missing, has no `.obsidian` folder or notes, or isn't set up for Obsidian Sync. `ob` would sync an empty folder as "delete every note". Logs go to `~/.local/share/notes-sync/launchd.log`.
+`run_onchange_after_notes-sync-bootstrap.sh` installs the pinned `ob` into `~/.local/share/obsidian-headless` (with Homebrew's unversioned node), links it to `~/.local/bin/ob`, and loads `com.jared.notes-sync`. `notes-sync` refuses to start, and launchd retries once a minute, while `ob` is missing or the vault is missing, has no `.obsidian` folder or notes, or isn't set up for Obsidian Sync. `ob` would sync an empty folder as "delete every note". Logs go to `~/.local/share/notes-sync/launchd.log`.
 
 One-time setup on the Hermes host. The login is interactive, so run it yourself:
 
 ```sh
 launchctl bootout gui/$(id -u)/com.jared.notes-sync      # stop retries during setup
-mv ~/Notes/personal ~/Notes/personal.archive-$(date +%F)  # if a stale copy exists
-export PATH="$HOME/.local/share/obsidian-headless/node_modules/.bin:/opt/homebrew/opt/node/bin:$PATH"
+# If a stale copy exists, first copy aside any notes that exist only there, then:
+mv ~/Notes/personal ~/Notes/personal.archive-$(date +%F)
 ob login
 ob sync-list-remote                                       # note the vault name
 mkdir -p ~/Notes/personal
@@ -293,9 +293,17 @@ ob sync-config --path ~/Notes/personal --mode pull-only   # nothing can push yet
 ob sync --path ~/Notes/personal                           # download; compare note count with another device
 ob sync-config --path ~/Notes/personal --mode bidirectional
 launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.jared.notes-sync.plist
+launchctl list | grep com.jared.notes-sync               # a PID means it's running
+tail ~/.local/share/notes-sync/launchd.log               # expect "syncing ~/Notes/personal"
 ```
 
-Then point `OBSIDIAN_VAULT_PATH` in `~/.hermes/.env` at `~/Notes/personal` and restart the Hermes gateway. `ob sync-status --path ~/Notes/personal` shows the state at any time. This replaces `sync-notes`, the rsync loop between a Mac and the NAS; `.chezmoiremove` deletes its script and LaunchAgent.
+Then:
+
+1. Copy back any notes set aside from the stale copy, and check they reach another device.
+2. Point `OBSIDIAN_VAULT_PATH` in `~/.hermes/.env` at `~/Notes/personal` and restart the Hermes gateway.
+3. Have the agent write a test note, check it appears on another device, then delete it.
+
+`ob sync-status --path ~/Notes/personal` shows the state at any time. This replaces `sync-notes`, the rsync loop between a Mac and the NAS; `.chezmoiremove` deletes its script and LaunchAgent.
 
 ## Common Commands
 

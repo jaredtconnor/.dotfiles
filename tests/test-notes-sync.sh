@@ -86,6 +86,14 @@ test_healthy_vault_runs_continuous_sync() {
     else bad healthy_vault_runs_continuous_sync "rc=$rc calls=[$calls] err=[$err]"; fi
 }
 
+test_missing_ob_refuses_and_says_so() {
+    make_vault "$WORK/noob"
+    run_launcher "$WORK/noob" NOTES_SYNC_BIN_DIR="$WORK/empty-bin" PATH=/usr/bin:/bin
+    if [[ $rc -ne 0 && -z "$calls" && "$err" == *"ob is not installed"* ]]; then
+        ok missing_ob_refuses_and_says_so
+    else bad missing_ob_refuses_and_says_so "rc=$rc calls=[$calls] err=[$err]"; fi
+}
+
 test_default_vault_is_notes_personal() {
     make_vault "$WORK/home/Notes/personal"
     run_launcher ""
@@ -99,6 +107,7 @@ test_vault_without_obsidian_folder_refuses
 test_vault_without_notes_refuses
 test_unconfigured_vault_refuses
 test_healthy_vault_runs_continuous_sync
+test_missing_ob_refuses_and_says_so
 test_default_vault_is_notes_personal
 
 printf '\n%d passed, %d failed\n' "$pass" "$fail"

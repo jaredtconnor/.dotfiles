@@ -3,7 +3,7 @@
 # Run by the com.jared.notes-sync LaunchAgent on the Hermes host, so the agent's writes sync
 # without the Obsidian app open. Refuses to start on a vault that is missing, empty, or not set
 # up for Obsidian Sync: ob would sync an empty folder as "delete every note". The one-time
-# setup (ob login, ob sync-setup, first pull-only sync) is in the README, "Notes sync".
+# setup (ob login, ob sync-setup, first pull-only sync) is in the README, "Notes Sync".
 set -euo pipefail
 
 VAULT="${NOTES_SYNC_VAULT:-$HOME/Notes/personal}"
@@ -11,12 +11,12 @@ BIN_DIR="${NOTES_SYNC_BIN_DIR:-$HOME/.local/share/obsidian-headless/node_modules
 # Homebrew's unversioned node path survives node upgrades; a Cellar path does not.
 export PATH="$BIN_DIR:/opt/homebrew/opt/node/bin:$PATH"
 
-say() {
+log() {
     printf '%s notes-sync: %s\n' "$(date '+%Y-%m-%d %H:%M:%S')" "$1" >&2
 }
 
 refuse() {
-    say "refusing to start: $1"
+    log "refusing to start: $1"
     exit 1
 }
 
@@ -24,8 +24,9 @@ refuse() {
 [[ -d "$VAULT/.obsidian" ]] || refuse "$VAULT has no .obsidian folder"
 [[ -n "$(find "$VAULT" -path "$VAULT/.obsidian" -prune -o -name '*.md' -print -quit)" ]] ||
     refuse "$VAULT has no notes"
+command -v ob >/dev/null || refuse "ob is not installed (expected in $BIN_DIR)"
 ob sync-status --path "$VAULT" >/dev/null 2>&1 ||
     refuse "$VAULT is not set up for Obsidian Sync (run ob sync-setup)"
 
-say "syncing $VAULT"
+log "syncing $VAULT"
 exec ob sync --continuous --path "$VAULT"
