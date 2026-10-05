@@ -42,10 +42,18 @@ fi
 # 2. (Re)load the LaunchAgent. launchd won't create the log directory itself.
 mkdir -p "$HOME/.local/share/notes-sync"
 if [[ -f "$PLIST" ]]; then
-    uid="$(id -u)"
-    launchctl bootout "gui/$uid/com.jared.notes-sync" 2>/dev/null || true
-    launchctl bootstrap "gui/$uid" "$PLIST" 2>/dev/null ||
-        launchctl load "$PLIST" 2>/dev/null || true
+    service="gui/$(id -u)/com.jared.notes-sync"
+    launchctl bootout "$service" 2>/dev/null || true
+    # bootout returns before a running ob has exited, and bootstrap fails until it has.
+    for _ in $(seq 1 30); do
+        launchctl print "$service" >/dev/null 2>&1 || break
+        sleep 1
+    done
+    if ! launchctl bootstrap "gui/$(id -u)" "$PLIST"; then
+        # Fail so chezmoi retries on the next apply instead of leaving the agent unloaded.
+        echo "notes-sync: launchctl bootstrap failed; the LaunchAgent is not loaded." >&2
+        exit 1
+    fi
     echo "notes-sync: LaunchAgent (re)loaded"
 fi
 {{ else -}}
