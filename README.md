@@ -303,6 +303,18 @@ Then:
 2. Point `OBSIDIAN_VAULT_PATH` in `~/.hermes/.env` at `~/Notes/personal` and restart the Hermes gateway.
 3. Have the agent write a test note, check it appears on another device, then delete it.
 
+To keep Obsidian settings and plugins in step too (needed only if you open the vault in the Obsidian app on that host), copy `.obsidian` from a synced device first, so `ob` has nothing to push, then turn on config sync with a download-only first pass:
+
+```sh
+rsync -a --exclude workspace.json <synced-device>:Notes/personal/.obsidian/ ~/Notes/personal/.obsidian/
+ob sync-config --path ~/Notes/personal --mode pull-only \
+  --configs app,appearance,appearance-data,hotkey,core-plugin,core-plugin-data,community-plugin,community-plugin-data
+ob sync --path ~/Notes/personal                      # .obsidian should come out unchanged
+ob sync-config --path ~/Notes/personal --mode bidirectional
+```
+
+Never connect the Obsidian app's own Sync to this folder: `ob` is its sync client. A second client on a near-empty `.obsidian` pushed its defaults and deleted settings files for every device on 2026-10-04. If you open the vault in the app there, disconnect Sync in its settings first.
+
 `ob sync-status --path ~/Notes/personal` shows the state at any time. This replaces `sync-notes`, the rsync loop between a Mac and the NAS; `.chezmoiremove` deletes its script and LaunchAgent.
 
 ## Common Commands
