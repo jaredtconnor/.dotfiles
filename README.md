@@ -277,7 +277,7 @@ Hermes host: notes-sync LaunchAgent -> ob sync --continuous -> ~/Notes/personal 
                      homelab container (ob) -> NFS -> NAS
 ```
 
-`run_onchange_after_notes-sync-bootstrap.sh` installs the pinned `ob` into `~/.local/share/obsidian-headless` (with Homebrew's unversioned node), links it to `~/.local/bin/ob`, and loads `com.jared.notes-sync`. `notes-sync` refuses to start, and launchd retries once a minute, while `ob` is missing or the vault is missing, has no `.obsidian` folder or notes, or isn't set up for Obsidian Sync. `ob` would sync an empty folder as "delete every note". Logs go to `~/.local/share/notes-sync/launchd.log`.
+`run_onchange_after_notes-sync-bootstrap.sh` installs the pinned `ob` into `~/.local/share/obsidian-headless` and loads `com.jared.notes-sync`. `ob`'s database module is native code built for one node ABI, so `~/.local/bin/ob` is a wrapper: it always runs Homebrew's node, and rebuilds the module once whenever that node's ABI changes (after a Homebrew node major upgrade). Other nodes on `PATH` (mise's, Hermes') don't matter. `notes-sync` refuses to start, and launchd retries once a minute, while `ob` is missing or the vault is missing, has no `.obsidian` folder or notes, or isn't set up for Obsidian Sync. `ob` would sync an empty folder as "delete every note". Logs go to `~/.local/share/notes-sync/launchd.log`.
 
 One-time setup on the Hermes host. The login is interactive, so run it yourself:
 

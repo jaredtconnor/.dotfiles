@@ -113,6 +113,7 @@ AppData
 # notes-sync keeps the agent's vault in Obsidian Sync (ob as a LaunchAgent). Target paths:
 # chezmoi strips the run_onchange_after_ prefix and .tmpl suffix before matching.
 .local/bin/notes-sync
+.local/bin/ob
 Library/LaunchAgents/com.jared.notes-sync.plist
 .chezmoiscripts/notes-sync-bootstrap.sh
 {{- end }}

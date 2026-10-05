@@ -1,0 +1,23 @@
+#!/usr/bin/env bash
+# ob — Obsidian's headless client (obsidian-headless), run with the node it was built for.
+# Its database module (better-sqlite3) is native code compiled for one node ABI, so ob fails
+# under any other node on PATH (mise's, Hermes') and after a Homebrew node major upgrade. This
+# always uses Homebrew's node, and rebuilds the module once whenever that node's ABI changes.
+# Installed by run_onchange_after_notes-sync-bootstrap.sh; see the README, "Notes Sync".
+set -euo pipefail
+
+PREFIX="${OB_PREFIX:-$HOME/.local/share/obsidian-headless}"
+NODE="${OB_NODE:-/opt/homebrew/opt/node/bin/node}"
+MARKER="$PREFIX/.node-abi"
+
+[[ -x "$NODE" ]] || {
+    echo "ob: node not found at $NODE" >&2
+    exit 1
+}
+abi="$("$NODE" -p process.versions.modules)"
+if [[ "$(cat "$MARKER" 2>/dev/null || true)" != "$abi" ]]; then
+    echo "ob: rebuilding native modules for node ABI $abi" >&2
+    PATH="$(dirname "$NODE"):$PATH" npm rebuild --prefix "$PREFIX" --loglevel=error >&2
+    printf '%s\n' "$abi" >"$MARKER"
+fi
+exec "$NODE" "$PREFIX/node_modules/obsidian-headless/cli.js" "$@"

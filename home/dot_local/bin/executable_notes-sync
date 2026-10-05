@@ -7,9 +7,9 @@
 set -euo pipefail
 
 VAULT="${NOTES_SYNC_VAULT:-$HOME/Notes/personal}"
-BIN_DIR="${NOTES_SYNC_BIN_DIR:-$HOME/.local/share/obsidian-headless/node_modules/.bin}"
-# Homebrew's unversioned node path survives node upgrades; a Cellar path does not.
-export PATH="$BIN_DIR:/opt/homebrew/opt/node/bin:$PATH"
+# The ob wrapper, which picks the node ob was built for.
+BIN_DIR="${NOTES_SYNC_BIN_DIR:-$HOME/.local/bin}"
+export PATH="$BIN_DIR:$PATH"
 
 log() {
     printf '%s notes-sync: %s\n' "$(date '+%Y-%m-%d %H:%M:%S')" "$1" >&2
