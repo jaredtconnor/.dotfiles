@@ -1,0 +1,10 @@
+[Unit]
+Description=Periodic Obsidian vault auto-push to Forgejo
+
+[Timer]
+OnCalendar=hourly
+Persistent=true
+RandomizedDelaySec=120
+
+[Install]
+WantedBy=timers.target

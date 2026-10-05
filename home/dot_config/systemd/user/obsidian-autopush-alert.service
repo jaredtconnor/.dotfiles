@@ -1,0 +1,12 @@
+# Raised by obsidian-autopush.service's OnFailure=. Point ALERTMANAGER_URL at Alertmanager in
+# ~/.config/obsidian-autopush.env when it doesn't run on this host.
+[Unit]
+Description=Alert via Alertmanager when obsidian-autopush fails
+
+[Service]
+Type=oneshot
+Environment=ALERTMANAGER_URL=http://localhost:9093
+EnvironmentFile=-%h/.config/obsidian-autopush.env
+ExecStart=/usr/bin/curl -sf -m 10 -XPOST ${ALERTMANAGER_URL}/api/v2/alerts \
+  -H "Content-Type: application/json" \
+  -d '[{"labels":{"alertname":"ObsidianAutopush","severity":"critical","instance":"%H"},"annotations":{"summary":"obsidian-autopush.service failed: notes git snapshots may have stopped (see journalctl --user -u obsidian-autopush)"}}]'

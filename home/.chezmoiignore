@@ -103,6 +103,7 @@ AppData
 {{- if stat $identFile }}{{ $ident = (get (include $identFile | fromYaml) "identity" | default dict) }}{{ end }}
 {{- $hermesHost := get $ident "hermes_host" | default "" }}
 {{- $heliumHosts := get $ident "helium_hosts" | default (list) }}
+{{- $notesBackupHost := get $ident "notes_backup_host" | default "" }}
 
 {{- if ne .chezmoi.hostname $hermesHost }}
 # Hermes agent runtime config — only the designated Hermes host runs the agent.
@@ -116,6 +117,16 @@ AppData
 .local/bin/ob
 Library/LaunchAgents/com.jared.notes-sync.plist
 .chezmoiscripts/notes-sync-bootstrap.sh
+{{- end }}
+
+{{- if ne .chezmoi.hostname $notesBackupHost }}
+# obsidian-autopush: hourly git snapshots of the NAS vault copies, only on the notes backup
+# host (the one that mounts the NAS notes share). Host comes from the private companion.
+.local/bin/obsidian-autopush
+.config/systemd/user/obsidian-autopush.service
+.config/systemd/user/obsidian-autopush.timer
+.config/systemd/user/obsidian-autopush-alert.service
+.chezmoiscripts/obsidian-autopush-enable.sh
 {{- end }}
 
 {{- if not (has .chezmoi.hostname $heliumHosts) }}

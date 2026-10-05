@@ -1,0 +1,11 @@
+# Hourly git snapshot of the NAS vault copies (~/.local/bin/obsidian-autopush). Managed by
+# dotfiles on the notes backup host only (identity.notes_backup_host).
+[Unit]
+Description=Commit and push Obsidian vaults to Forgejo
+After=network-online.target
+Wants=network-online.target
+OnFailure=obsidian-autopush-alert.service
+
+[Service]
+Type=oneshot
+ExecStart=%h/.local/bin/obsidian-autopush

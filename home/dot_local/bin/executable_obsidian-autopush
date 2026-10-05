@@ -1,0 +1,60 @@
+#!/usr/bin/env bash
+# obsidian-autopush — commit and push the NAS copies of the Obsidian vaults to Forgejo.
+# Run hourly by the obsidian-autopush user timer on the notes backup host
+# (identity.notes_backup_host). Obsidian Sync keeps the devices in step and the homelab
+# obsidian-sync containers mirror it to the NAS; this gives each vault git history. Pushes use
+# the host's Forgejo service key via ~/.ssh/config.
+#
+# Fails (and the unit's OnFailure= alerts) when the mount is missing, a commit or push fails, or
+# a vault's NAS sync container isn't healthy. It still snapshots whatever it can first.
+set -uo pipefail
+
+BASE="${OBSIDIAN_AUTOPUSH_BASE:-/mnt/notes}"
+read -r -a VAULTS <<<"${OBSIDIAN_AUTOPUSH_VAULTS:-personal-notes work-notes}"
+# The NAS sync container for vault "<name>-notes" is "<prefix><name>" (homelab-infra obsidian-sync).
+CONTAINER_PREFIX="${OBSIDIAN_AUTOPUSH_CONTAINER_PREFIX:-obsidian-sync-}"
+rc=0
+
+say() {
+    echo "obsidian-autopush: $*"
+}
+
+fail() {
+    echo "obsidian-autopush: $*" >&2
+    rc=1
+}
+
+# Never snapshot an empty mount point: that would commit "delete every note".
+if ! mountpoint -q "$BASE"; then
+    echo "obsidian-autopush: $BASE is not mounted" >&2
+    exit 1
+fi
+
+for v in "${VAULTS[@]}"; do
+    repo="$BASE/$v"
+    if [[ ! -d "$repo/.git" ]]; then
+        say "$v has no .git; skipping"
+        continue
+    fi
+    if [[ -n "$(git -C "$repo" status --porcelain)" ]]; then
+        if git -C "$repo" add -A &&
+            git -C "$repo" commit -q -m "Auto-snapshot $(date '+%Y-%m-%d %H:%M:%S %z')"; then
+            say "$v committed"
+        else
+            fail "$v commit failed"
+            continue
+        fi
+    else
+        say "$v no changes"
+    fi
+    if git -C "$repo" push -q origin main; then
+        say "$v push complete"
+    else
+        fail "$v push FAILED"
+    fi
+    # A stalled NAS copy would otherwise produce "no changes" snapshots forever.
+    container="$CONTAINER_PREFIX${v%-notes}"
+    health="$(docker inspect -f '{{.State.Health.Status}}' "$container" 2>/dev/null || echo missing)"
+    [[ "$health" == healthy ]] || fail "$v: NAS sync container $container is $health"
+done
+exit "$rc"

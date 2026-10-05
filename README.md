@@ -53,6 +53,7 @@ Some features are limited to specific hosts listed in the companion:
 - `ssh.headless_hosts`: agent VMs with no 1Password. Their SSH config uses the on-disk `agent-claude` key for homelab hosts instead of the 1Password agent.
 - `identity.hermes_host`: the only host that gets `~/.hermes/config.yaml`, the `life-ops` clone, and notes-sync.
 - `identity.helium_hosts`: the only hosts that get helium-sync (browser sync LaunchAgent).
+- `identity.notes_backup_host`: the only host that gets obsidian-autopush (git snapshots of the NAS vault copies).
 
 This produces the following machine classes. Hostnames live in the companion, not here.
 
@@ -315,7 +316,13 @@ ob sync-config --path ~/Notes/personal --mode bidirectional
 
 Never connect the Obsidian app's own Sync to this folder: `ob` is its sync client. A second client on a near-empty `.obsidian` pushed its defaults and deleted settings files for every device on 2026-10-04. If you open the vault in the app there, disconnect Sync in its settings first.
 
-`ob sync-status --path ~/Notes/personal` shows the state at any time. This replaces `sync-notes`, the rsync loop between a Mac and the NAS; `.chezmoiremove` deletes its script and LaunchAgent.
+`ob sync-status --path ~/Notes/personal` shows the state at any time.
+
+#### Notes history in git
+
+The NAS copies of the vaults are git repos, pushed to Forgejo (`personal-notes`, `work-notes`). On the notes backup host, which mounts the NAS share, the `obsidian-autopush` user timer runs hourly. It commits each vault when it changed (`Auto-snapshot <date>`) and pushes. The homelab containers that feed the NAS are download-only and also sync `.obsidian`, so the history includes settings and plugins.
+
+The run fails, and `OnFailure=` posts an `ObsidianAutopush` alert to Alertmanager, if the share isn't mounted, a commit or push fails, or a vault's `obsidian-sync-*` container isn't healthy. It still snapshots what it can first. Alertmanager defaults to `http://localhost:9093`; set `ALERTMANAGER_URL` in `~/.config/obsidian-autopush.env` to point elsewhere. Check it with `systemctl --user list-timers obsidian-autopush.timer` and `journalctl --user -u obsidian-autopush`. To snapshot right now, run `systemctl --user start obsidian-autopush`. This replaces `sync-notes`, the rsync loop between a Mac and the NAS; `.chezmoiremove` deletes its script and LaunchAgent.
 
 ## Common Commands
 
