@@ -45,7 +45,7 @@ Secrets live in neither repo. The 1Password SSH agent serves private keys, `~/.e
 | Flag | Set when | Effect |
 |---|---|---|
 | `server` | `CHEZMOI_SERVER` is set, or the hostname is in the companion's `server_hostnames` | Allowlist: only `~/.ssh/config`, `~/.ssh/hosts`, and `~/.config/git/`. No shell frameworks, editors, desktop apps, agent runtimes, or run scripts. The only external is the companion. |
-| `work` | Never on servers. Otherwise: `CHEZMOI_WORK` is set, the hostname matches the companion's `work_hostname`, or you answer yes to the one-time prompt | Work Git identity and SSH key, plus the `~/.skills-work` overlay from the work GitHub org |
+| `work` | Never on servers. Otherwise: `CHEZMOI_WORK` is set, the hostname matches the companion's `work_hostname`, or you answer yes to the one-time prompt | Work Git identity and SSH key, plus the `~/.agent-tooling-work` overlay from the work GitHub org |
 | `workstation` | The hostname is in the companion's `workstation_hostnames` | Home layout buckets (`~/Code`, `~/Notes`, `~/Data`, `~/Tools`, `~/Sandbox`, `~/Archives`), ghq/gwq repo navigation, `dev-setup` |
 
 Some features are limited to specific hosts listed in the companion:
@@ -254,13 +254,13 @@ Defined in `.chezmoiexternal.toml.tmpl` and refreshed weekly by `chezmoi apply` 
 | `agent-tooling` (Forgejo, public mirror on GitHub) | `~/.agent-tooling` | Non-server, with companion |
 | `life-ops` (Forgejo, private) | `~/.life-ops` | Hermes host only (`identity.hermes_host`) |
 | Skill packs from `~/.agent-tooling/external-skills.json` | `~/.skills-external/<name>` | Non-server; appear on the second apply of a new machine |
-| Work skills overlay (work GitHub org) | `~/.skills-work` | Work only |
+| Work skills overlay (work GitHub org) | `~/.agent-tooling-work` | Work only |
 
 To force a refresh: `just refresh-externals`. It runs `chezmoi apply --refresh-externals=always --include=externals --force`, then the skills mirror script on its own (`--include=externals` skips scripts), so skills new to a pack are linked into the agent runtimes right away.
 
 ### AI Tooling Split
 
-Reusable AI tooling lives in `agent-tooling`, with third-party skill packs in `~/.skills-external` and work-only content in the `~/.skills-work` overlay. `run_after_symlink-ai-mirror.sh` flat-symlinks skills, agents, commands, and hooks from those sources into Claude Code, Cursor, Codex, Pi, and `~/.agents`. It also prunes dead links. When a workflow exists as both a command and a skill, only the command is exported, so it appears once as a slash entry.
+Reusable AI tooling lives in `agent-tooling`, with third-party skill packs in `~/.skills-external` and work-only content in the `~/.agent-tooling-work` overlay. `run_after_symlink-ai-mirror.sh` flat-symlinks skills, agents, commands, and hooks from those sources into Claude Code, Cursor, Codex, Pi, and `~/.agents`. It also prunes dead links. When a workflow exists as both a command and a skill, only the command is exported, so it appears once as a slash entry.
 
 Personal-life skills for Hermes (planning, goals) live in the private `life-ops` repo instead. Only the Hermes host clones it, and Hermes loads `~/.life-ops/skills` through `skills.external_dirs` in its config. Those skills are not mirrored into the coding agents.
 

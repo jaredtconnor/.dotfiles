@@ -39,7 +39,7 @@ function Ensure-Junction([string]$target, [string]$link) {
 # Roots in priority order. Work overlay only exists on work machines; external
 # packs are whatever agent-tooling's registry cloned under ~/.skills-external.
 $roots = @( (Join-Path $userHome ".agent-tooling") )
-$work = Join-Path $userHome ".skills-work"
+$work = Join-Path $userHome ".agent-tooling-work"
 if (Test-Path $work) { $roots += $work }
 $extRoot = Join-Path $userHome ".skills-external"
 if (Test-Path $extRoot) {

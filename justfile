@@ -4,7 +4,7 @@
 #   just sync       - Apply chezmoi locally
 #   just sync-all   - Force-apply locally + push to all remote hosts
 #   just status     - Show chezmoi diff
-#   just refresh-externals - Re-pull externals (skill packs, agent-tooling, skills-work)
+#   just refresh-externals - Re-pull externals (skill packs, agent-tooling, agent-tooling-work)
 #   just edit       - Open chezmoi source in editor
 #
 # See 'just --list' for all available commands

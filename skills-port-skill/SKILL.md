@@ -23,7 +23,7 @@ Moves or copies one skill between `agent-tooling` and the work overlay, pausing 
 Both are staged by chezmoi-external:
 
 - Reusable: `~/.agent-tooling`
-- Work: `~/.skills-work`
+- Work: `~/.agent-tooling-work`
 
 The flat-linker at `~/.claude/skills/<skill>` points into one of these source paths.
 

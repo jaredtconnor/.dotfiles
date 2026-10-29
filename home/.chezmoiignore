@@ -166,7 +166,7 @@ Library/LaunchAgents/com.jared.helium-sync.plist
 
 {{/*
     Skills and agents arrive via chezmoi-external into
-    ~/.agent-tooling and ~/.skills-work.
+    ~/.agent-tooling and ~/.agent-tooling-work.
     The run_after_symlink-ai-mirror.sh script flat-links them into
     ~/.claude and ~/.cursor. No source-tree gating needed here.
 
