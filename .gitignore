@@ -12,9 +12,9 @@
 Thumbs.db
 mise.toml
 .cursor/*
-# Repo-root only. Agent instructions for editing this repo stay local, but
-# managed context files under home/ (home/dot_omp/private_agent/AGENTS.md) must be
-# tracked, so this is anchored instead of matching AGENTS.md at every depth.
+# Repo-root only. Agent instructions for editing this repo stay local. Global
+# agent instructions (~/.omp/agent/AGENTS.md, ~/.claude/CLAUDE.md, ...) are not
+# managed here; ~/.agent-tooling writes them with `just instructions`.
 /AGENTS.md
 
 # Local (private) publication denylist merged by scripts/verify-publication.sh
