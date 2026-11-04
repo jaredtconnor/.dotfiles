@@ -44,16 +44,24 @@ alias mv='mv -i'
 hs() { history | grep -i "$1"; }
 
 # Pi (default: no skills to reduce clutter, but keep management subcommands working)
+# The pi-agent-setup's own skills, which explain its subagent and background
+# terminal tools, still load.
 # Some hosts inject an `alias pi=...` before this file loads, which makes the
 # function definition below fail to parse. Clear it first so we always win.
 unalias pi 2>/dev/null
 pi() {
     case "$1" in
-        install | remove | uninstall | update | list | config)
+        install | remove | uninstall | update | list | config | auth | mcp)
             command pi "$@"
             ;;
         *)
-            command pi --no-skills "$@"
+            local -a skills=()
+            local skill
+            for skill in subagents background-terminals; do
+                [[ -f "$HOME/.pi/agent/skills/$skill/SKILL.md" ]] &&
+                    skills+=(--skill "$HOME/.pi/agent/skills/$skill")
+            done
+            command pi --no-skills "${skills[@]}" "$@"
             ;;
     esac
 }

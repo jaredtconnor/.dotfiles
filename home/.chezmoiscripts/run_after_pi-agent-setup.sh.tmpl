@@ -1,0 +1,157 @@
+#!/usr/bin/env bash
+{{/*
+    Finish the Pi agent setup in ~/.pi/agent after each apply. That directory
+    is the pi-agent-setup external, a fork of davis7dotsh/my-pi-setup; the
+    external brings only the source, so this script:
+
+    - runs `npm ci` in the repo root and in each extension when a lockfile (or
+      the node version) changes; otherwise it does nothing,
+    - sets the theme to the setup's github-dark-default when none is chosen,
+    - removes what the old pi-agent-ux-patches script wrote for the
+      extensions that now live on the repo's `legacy` branch.
+
+    Scope: non-server profile (.chezmoiscripts is ignored on servers), not
+    Windows. Skips with a warning, rather than failing the apply, when node
+    is missing or an install fails.
+*/}}
+set -euo pipefail
+shopt -s nullglob
+
+AGENT_DIR="${HOME}/.pi/agent"
+
+[[ -f "${AGENT_DIR}/package-lock.json" ]] || exit 0
+
+# chezmoi scripts run with a non-interactive PATH, and node is owned by mise,
+# so bare `node` is missing on hosts without a shell-activated mise.
+find_node() {
+    if command -v node >/dev/null 2>&1; then
+        command -v node
+        return 0
+    fi
+
+    local shim="${HOME}/.local/share/mise/shims/node"
+    if [[ -x "${shim}" ]]; then
+        echo "${shim}"
+        return 0
+    fi
+
+    local mise resolved
+    for mise in "$(command -v mise 2>/dev/null || true)" \
+        "${HOME}/.local/bin/mise" /opt/homebrew/bin/mise /usr/local/bin/mise; do
+        [[ -n "${mise}" && -x "${mise}" ]] || continue
+        resolved="$("${mise}" which node 2>/dev/null || true)"
+        if [[ -n "${resolved}" && -x "${resolved}" ]]; then
+            echo "${resolved}"
+            return 0
+        fi
+    done
+
+    return 1
+}
+
+NODE_BIN="$(find_node || true)"
+if [[ -z "${NODE_BIN}" ]]; then
+    echo "WARNING: node not found; skipping pi agent setup" >&2
+    exit 0
+fi
+# npm starts with `#!/usr/bin/env node`, so this node has to come first.
+PATH="$(dirname "${NODE_BIN}"):${PATH}"
+export PATH
+
+# ---------------------------------------------------------------------------
+# Dependencies
+# ---------------------------------------------------------------------------
+lockfiles=("${AGENT_DIR}/package-lock.json" "${AGENT_DIR}"/extensions/*/package-lock.json)
+stamp="${AGENT_DIR}/node_modules/.pi-agent-setup-deps"
+wanted="$(node -e '
+const hash = require("node:crypto").createHash("sha256");
+hash.update(process.version);
+for (const file of process.argv.slice(1)) hash.update(require("node:fs").readFileSync(file));
+console.log(hash.digest("hex"));
+' "${lockfiles[@]}")" || {
+    echo "WARNING: could not read the pi agent lockfiles; skipping" >&2
+    exit 0
+}
+
+if [[ "$(cat "${stamp}" 2>/dev/null || true)" != "${wanted}" ]]; then
+    echo "Installing pi agent dependencies..."
+    installed=1
+    for lockfile in "${lockfiles[@]}"; do
+        dir="$(dirname "${lockfile}")"
+        if ! (cd "${dir}" && npm ci --no-audit --no-fund --loglevel=error >/dev/null); then
+            echo "WARNING: npm ci failed in ${dir}; retry with 'just sync'" >&2
+            installed=0
+        fi
+    done
+    if [[ "${installed}" -eq 1 ]]; then
+        mkdir -p "$(dirname "${stamp}")"
+        printf '%s\n' "${wanted}" >"${stamp}"
+    fi
+fi
+
+# The rest only applies to main. On the legacy branch, the old patches are
+# still what its extensions need.
+if [[ -d "${AGENT_DIR}/extensions/leader-key" || -d "${AGENT_DIR}/extensions/handoff" ]]; then
+    exit 0
+fi
+
+# ---------------------------------------------------------------------------
+# settings.json: theme, and the old handoff entries
+# ---------------------------------------------------------------------------
+if ! node <<'JS'
+const fs = require("node:fs");
+const os = require("node:os");
+const path = require("node:path");
+
+const settingsPath = path.join(os.homedir(), ".pi", "agent", "settings.json");
+if (!fs.existsSync(settingsPath)) process.exit(0);
+
+const before = fs.readFileSync(settingsPath, "utf8");
+const data = JSON.parse(before);
+
+// "dark" is pi's default; anything else was picked on purpose.
+if (data.theme === undefined || data.theme === "dark") {
+  data.theme = "github-dark-default";
+}
+
+const legacyEntries = new Set(["extensions", "-extensions/handoff/index.ts"]);
+if (Array.isArray(data.extensions)) {
+  data.extensions = data.extensions.filter((entry) => !legacyEntries.has(entry));
+  if (data.extensions.length === 0) delete data.extensions;
+}
+
+const after = `${JSON.stringify(data, null, 2)}\n`;
+if (after !== before) fs.writeFileSync(settingsPath, after);
+JS
+then
+    echo "WARNING: could not update ~/.pi/agent/settings.json" >&2
+fi
+
+# ---------------------------------------------------------------------------
+# Leftovers from pi-agent-ux-patches
+# ---------------------------------------------------------------------------
+# keybindings.json moved model cycling off ctrl+p for leader-key. Remove it
+# only if it is still exactly what that script wrote.
+keybindings="${AGENT_DIR}/keybindings.json"
+if [[ -f "${keybindings}" ]] && cmp -s "${keybindings}" - <<'JSON'
+{
+  "app.model.cycleForward": ["ctrl+alt+p"],
+  "app.session.togglePath": ["ctrl+alt+/"],
+  "app.models.toggleProvider": ["ctrl+shift+alt+p"]
+}
+JSON
+then
+    rm "${keybindings}"
+fi
+
+# Stand-in node_modules for the tool-pills extension.
+tool_pills="${AGENT_DIR}/extensions/tool-pills"
+if [[ -d "${tool_pills}" && ! -e "${tool_pills}/index.ts" ]]; then
+    for shim in "${tool_pills}/node_modules/@shikijs/cli" "${tool_pills}/node_modules/diff"; do
+        if grep -qs '"0.0.0-local-shim"' "${shim}/package.json"; then
+            rm -f "${shim}/package.json" "${shim}/index.js"
+            rmdir "${shim}" 2>/dev/null || true
+        fi
+    done
+    rmdir "${tool_pills}/node_modules/@shikijs" "${tool_pills}/node_modules" "${tool_pills}" 2>/dev/null || true
+fi

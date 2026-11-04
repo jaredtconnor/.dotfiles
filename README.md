@@ -201,7 +201,7 @@ install.sh / install.ps1
         ├── Externals: companion, zsh frameworks, tmux plugins, agent tooling
         ├── Templates + managed files for this profile
         └── run_after: 1Password ~/.env, OMP install, AI tooling symlinks,
-                       SSH pub-key hints, mise setup
+                       Pi agent deps, SSH pub-key hints, mise setup
 ```
 
 ### Source Layout
@@ -250,7 +250,7 @@ Defined in `.chezmoiexternal.toml.tmpl` and refreshed weekly by `chezmoi apply` 
 | oh-my-zsh, zgenom | `~/.oh-my-zsh`, `~/.zgenom` | Non-server |
 | tmux-sensible, -resurrect, -continuum, -fzf-url, vim-tmux-navigator | `~/.tmux/plugins/` | Non-server |
 | NvChad starter | `~/.config/nvchad-nvim` | Non-server |
-| `pi-agent-setup` (Forgejo) | `~/.pi/agent` | Non-server, with companion |
+| `pi-agent-setup` (Forgejo, fork of [davis7dotsh/my-pi-setup](https://github.com/davis7dotsh/my-pi-setup)) | `~/.pi/agent` | Non-server, with companion |
 | `agent-tooling` (Forgejo, public mirror on GitHub) | `~/.agent-tooling` | Non-server, with companion |
 | `life-ops` (Forgejo, private) | `~/.life-ops` | Hermes host only (`identity.hermes_host`) |
 | Skill packs from `~/.agent-tooling/external-skills.json` | `~/.skills-external/<name>` | Non-server; appear on the second apply of a new machine |
@@ -261,6 +261,8 @@ To force a refresh: `just refresh-externals`. It runs `chezmoi apply --refresh-e
 ### AI Tooling Split
 
 Reusable AI tooling lives in `agent-tooling`, with third-party skill packs in `~/.skills-external` and work-only content in the `~/.agent-tooling-work` overlay. `run_after_symlink-ai-mirror.sh` flat-symlinks skills, agents, commands, and hooks from those sources into Claude Code, Cursor, Codex, Pi, and `~/.agents`. It also prunes dead links. When a workflow exists as both a command and a skill, only the command is exported, so it appears once as a slash entry.
+
+Pi's own setup is the `pi-agent-setup` external at `~/.pi/agent`, a fork of davis7dotsh/my-pi-setup (extensions for subagents, workflows, background terminals, `fd`/`rg`, Firecrawl search, and a GitHub-dark theme; see its FORK.md). The external brings only source. `run_after_pi-agent-setup.sh` runs `npm ci` in the repo and each extension whenever a lockfile changes, and sets the theme on hosts that haven't picked one. Pi itself is not installed by chezmoi, and the setup needs pi 1.5 or later. The zsh `pi` wrapper passes `--no-skills` to keep the mirrored skills out of context, but it still loads the setup's two skills.
 
 Personal-life skills for Hermes (planning, goals) live in the private `life-ops` repo instead. Only the Hermes host clones it, and Hermes loads `~/.life-ops/skills` through `skills.external_dirs` in its config. Those skills are not mirrored into the coding agents.
 
