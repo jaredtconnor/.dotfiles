@@ -78,7 +78,13 @@ if [[ "$(cat "${stamp}" 2>/dev/null || true)" != "${wanted}" ]]; then
     installed=1
     for lockfile in "${lockfiles[@]}"; do
         dir="$(dirname "${lockfile}")"
-        if ! (cd "${dir}" && npm ci --no-audit --no-fund --loglevel=error >/dev/null); then
+        # Each extension's `prepare` runs `effect-tsgo patch`, an editor-only
+        # TypeScript patch whose platform binary upstream's macOS lockfiles
+        # leave out, so it fails on Linux. Their other install scripts are
+        # optional native speedups, so extensions skip scripts.
+        install=(npm ci --no-audit --no-fund --loglevel=error)
+        [[ "${dir}" == "${AGENT_DIR}" ]] || install+=(--ignore-scripts)
+        if ! (cd "${dir}" && "${install[@]}" >/dev/null); then
             echo "WARNING: npm ci failed in ${dir}; retry with 'just sync'" >&2
             installed=0
         fi
