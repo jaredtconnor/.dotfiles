@@ -85,12 +85,25 @@
             "a": "editor::ToggleCodeActions" // zed specific
         }
     },
-    // Toggle terminal
+    // Workspace-wide: these fire from the editor, agent panel, and terminal
     {
         "context": "Workspace",
         "bindings": {
             // Toggle terminal
-            "ctrl-\\": "terminal_panel::ToggleFocus"
+            "ctrl-\\": "terminal_panel::ToggleFocus",
+            // Agent threads (alt-a, then key)
+            "alt-a n": "agent::NewThread",
+            "alt-a a": "agent::ToggleFocus",
+            "alt-a t": "agents_sidebar::ToggleThreadSwitcher",
+            "alt-a j": "multi_workspace::NextThread",
+            "alt-a k": "multi_workspace::PreviousThread",
+            "alt-a s": "multi_workspace::ToggleWorkspaceSidebar",
+            // Projects, branches, worktrees (alt-p, then key)
+            "alt-p p": "projects::OpenRecent",
+            "alt-p b": "branches::OpenRecent",
+            "alt-p w": "git::Worktree",
+            "alt-p j": "multi_workspace::NextProject",
+            "alt-p k": "multi_workspace::PreviousProject"
         }
     },
     {
