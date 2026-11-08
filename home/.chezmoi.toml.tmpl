@@ -46,7 +46,16 @@
 {{-   end -}}
 {{- end -}}
 
+{{- /* Per-host destination override (companion identity.dest_dirs: hostname ->
+       path), for hosts whose home holds symlinked dirs chezmoi would replace
+       with real ones, e.g. a container that rebuilds $HOME and links ~/.ssh
+       into persistent storage. */ -}}
+{{- $destDir := get (get $id "dest_dirs" | default dict) .chezmoi.hostname | default "" -}}
+
 sourceDir = {{ joinPath .chezmoi.homeDir ".dotfiles" | quote }}
+{{- if $destDir }}
+destDir = {{ $destDir | quote }}
+{{- end }}
 
 [edit]
     command = "nvim"
