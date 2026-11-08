@@ -26,7 +26,7 @@ if ! zgenom saved; then
     zgenom ohmyzsh
 
     zgenom ohmyzsh plugins/git
-    zgenom ohmyzsh plugins/github
+    zgenom ohmyzsh plugins/gh
     zgenom ohmyzsh plugins/sudo
     zgenom ohmyzsh plugins/command-not-found
     zgenom ohmyzsh plugins/kubectl
