@@ -171,6 +171,10 @@ Host git.example.com
     IdentitiesOnly yes
 ```
 
+chezmoi replaces a symlinked target directory with a real one. On a container host that rebuilds `$HOME` on every start and links `~/.ssh` into persistent storage, a normal apply would delete that link and with it `authorized_keys`. For such a host, map its hostname to the storage directory in the companion's `identity.dest_dirs`, and chezmoi applies there instead. Then keep the repos, the chezmoi binary, and `~/.config/chezmoi` in that storage, and re-link them into `$HOME` from the container's startup hook.
+
+hubble (the Home Assistant Advanced SSH add-on, hostname `a0d7b954-ssh`) works this way. It applies into `/data`, and the add-on's `init_commands` runs `/data/dotfiles-links.sh`, which recreates `~/.dotfiles`, `~/.dotfiles-private`, `~/.local/bin/chezmoi`, `~/.config/chezmoi`, and `~/.config/git` as links into `/data`. `/data/dotfiles-links.sh` itself lives only on hubble.
+
 ## What's Managed
 
 | Category | Contents |
