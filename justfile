@@ -9,8 +9,6 @@
 #
 # See 'just --list' for all available commands
 
-hosts_file := home_directory() / ".ssh" / "hosts"
-
 # Show available commands
 default:
     @just --list
@@ -40,7 +38,7 @@ _link-skills:
 # Force-apply locally then push to all remote hosts
 sync-all: sync-force
     #!/usr/bin/env bash
-    hosts_file="{{ hosts_file }}"
+    hosts_file="$HOME/.ssh/hosts"
     sync_script="$HOME/.dotfiles/scripts/sync-chezmoi.sh"
     if [[ ! -f "$hosts_file" ]]; then
         echo "No hosts file at $hosts_file"
@@ -87,7 +85,7 @@ sync-all: sync-force
 # Force-apply chezmoi on one configured host (e.g. `just sync-host apollo`)
 sync-host HOST:
     #!/usr/bin/env bash
-    hosts_file="{{ hosts_file }}"
+    hosts_file="$HOME/.ssh/hosts"
     sync_script="$HOME/.dotfiles/scripts/sync-chezmoi.sh"
     host="{{ HOST }}"
     if [[ ! -f "$hosts_file" ]]; then
@@ -156,7 +154,7 @@ doctor:
 # Verify chezmoi setup across all hosts
 doctor-all:
     #!/usr/bin/env bash
-    hosts_file="{{ hosts_file }}"
+    hosts_file="$HOME/.ssh/hosts"
     if [[ ! -f "$hosts_file" ]]; then
         echo "No hosts file at $hosts_file"
         exit 1
