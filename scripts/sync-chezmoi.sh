@@ -95,12 +95,23 @@ step() {
 # pid (macOS has no flock). A holder that is gone, or whose pid now belongs to
 # something else after a reboot, is stale; renaming the link first means only
 # one waiter reclaims it.
+# Git Bash: plain `ln -s` deep-copies and fails on a missing target, so
+# winsymlinks:sys makes a real MSYS symlink; its ps has no -o, so the holder
+# check reads /proc/<pid>/cmdline (Linux too) and falls back to ps on macOS.
+holder_running() {
+    if [[ -r "/proc/$1/cmdline" ]]; then
+        tr '\0' ' ' <"/proc/$1/cmdline" | grep -q sync-chezmoi
+    else
+        ps -p "$1" -o command= 2>/dev/null | grep -q sync-chezmoi
+    fi
+}
+
 acquire_lock() {
     local waited=0 holder
     mkdir -p "$(dirname "$LOCK")"
-    until ln -s "$$" "$LOCK" 2>/dev/null; do
+    until MSYS="${MSYS:+$MSYS }winsymlinks:sys" ln -s "$$" "$LOCK" 2>/dev/null; do
         holder="$(readlink "$LOCK" 2>/dev/null || true)"
-        if [[ -n "$holder" ]] && ! ps -p "$holder" -o command= 2>/dev/null | grep -q sync-chezmoi; then
+        if [[ -n "$holder" ]] && ! holder_running "$holder"; then
             mv "$LOCK" "$LOCK.$$" 2>/dev/null && rm -f "$LOCK.$$"
             continue
         fi
