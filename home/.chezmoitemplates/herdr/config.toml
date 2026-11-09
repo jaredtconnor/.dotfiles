@@ -18,43 +18,68 @@ default_shell = "pwsh"
 
 {{ end -}}
 [keys]
-# Every action goes through the prefix so direct ctrl/alt chords stay with
-# the shell and editors inside panes. Press ctrl+space, release, then the key.
+# Mirrors ~/.tmux.conf. Every action goes through the prefix so direct ctrl/alt
+# chords stay with the shell and editors inside panes. Requires herdr >= 0.9
+# (resize_pane_*, move_tab_*). herdr defaults that already match tmux are
+# listed in comments only: h/j/k/l focus, - split down, x close pane, z zoom,
+# c new tab, 1..9 tabs, [ copy mode (v select, y copy), shift+x close tab.
 prefix = "ctrl+space"
 
-# Panes: vim-style focus, Zed-style layout
-focus_pane_left = "prefix+h"
-focus_pane_down = "prefix+j"
-focus_pane_up = "prefix+k"
-focus_pane_right = "prefix+l"
-split_vertical = "prefix+d"         # split right
-split_horizontal = "prefix+shift+d" # split down
-close_pane = "prefix+w"
-zoom = "prefix+f"
-resize_mode = "prefix+shift+r"
+# Config and session
+reload_config = "prefix+r"     # tmux r
+detach = "prefix+d"            # tmux d
+resize_mode = "prefix+shift+r" # repeatable h/j/k/l resizing, like tmux -r
 
-# Tabs
-new_tab = "prefix+t"
-switch_tab = "prefix+1..9"
-previous_tab = "prefix+ctrl+p"
-next_tab = "prefix+ctrl+n"
+# Panes
+split_vertical = "prefix+|" # tmux | (split right)
+resize_pane_left = "prefix+shift+h"  # tmux H/J/K/L
+resize_pane_down = "prefix+shift+j"
+resize_pane_up = "prefix+shift+k"
+resize_pane_right = "prefix+shift+l"
+swap_pane_left = "prefix+alt+h" # default shift+h/j/k/l now resizes
+swap_pane_down = "prefix+alt+j"
+swap_pane_up = "prefix+alt+k"
+swap_pane_right = "prefix+alt+l"
+# tmux ; Space (last window) and b (last session). herdr has no last-tab or
+# last-workspace action; last_pane jumps back across tabs and workspaces.
+last_pane = ["prefix+semicolon", "prefix+space", "prefix+b"]
+rename_pane = "prefix+period" # default shift+p now moves the tab
 
-# Workspaces
-workspace_picker = "prefix+p"
+# Tabs (tmux windows)
+previous_tab = ["prefix+p", "prefix+ctrl+p", "prefix+ctrl+h"] # tmux p, C-p, C-h
+next_tab = ["prefix+n", "prefix+ctrl+n", "prefix+ctrl+l"]     # tmux n, C-n, C-l
+move_tab_previous = "prefix+shift+p" # tmux P
+move_tab_next = "prefix+shift+n"     # tmux N
+rename_tab = "prefix+comma"          # tmux ,
+
+# Workspaces (tmux sessions)
+workspace_picker = ["prefix+t", "prefix+w"] # tmux t (sesh), w (choose-tree)
+new_workspace = "prefix+shift+c"            # default shift+n now moves the tab
+rename_workspace = "prefix+$"               # tmux $
+previous_workspace = "prefix+("             # tmux (
+next_workspace = "prefix+)"                 # tmux )
 switch_workspace = "prefix+alt+1..9"
-previous_workspace = "prefix+shift+l" # tmux last-session
-close_workspace = "prefix+shift+q"    # default prefix+shift+d is split_horizontal
 
 # Agents and UI
 focus_agent = "prefix+ctrl+1..9"
-toggle_sidebar = "prefix+b"
-reload_config = "prefix+r"
+toggle_sidebar = "prefix+backslash" # default b is tmux last-session above
 goto = "" # prefix+g opens lazygit below
 
 [[keys.command]]
-key = "prefix+g"
+key = "prefix+g" # tmux g
 type = "pane"
 command = "lazygit"
+
+# tmux B (break-pane -d): move the focused pane to a new tab, stay here.
+[[keys.command]]
+key = "prefix+shift+b"
+type = "shell"
+{{ if eq .chezmoi.os "windows" -}}
+command = '"%HERDR_BIN_PATH%" pane move %HERDR_ACTIVE_PANE_ID% --new-tab --no-focus'
+{{ else -}}
+command = '"$HERDR_BIN_PATH" pane move "$HERDR_ACTIVE_PANE_ID" --new-tab --no-focus'
+{{ end -}}
+description = "break pane to new tab"
 
 [ui]
 show_agent_labels_on_pane_borders = true
