@@ -6,6 +6,7 @@
 #   ghq  -> scoop | winget | go install   (repository clones)
 #   fzf  -> scoop | winget                 (fuzzy picker; also used by PSFzf)
 #   gwq  -> go install                     (no scoop/winget package exists)
+#   worktrunk -> scoop | winget           (git-wt; `wt` collides with Windows Terminal)
 #
 # Idempotent: anything already on PATH is skipped. Non-fatal: a missing package
 # manager logs guidance instead of aborting `chezmoi apply`.
@@ -31,6 +32,8 @@ function Install-Via {
 # ghq + fzf: prefer a package manager.
 Install-Via -Tool ghq -ScoopId ghq -WingetId 'x-motemen.ghq'
 Install-Via -Tool fzf -ScoopId fzf -WingetId 'junegunn.fzf'
+# Probe git-wt, not wt: Windows Terminal's wt.exe alias would read as installed.
+Install-Via -Tool git-wt -ScoopId worktrunk -WingetId 'max-sixty.worktrunk'
 
 # ghq fallback + gwq: build with Go (gwq has no scoop/winget package).
 foreach ($t in @(
