@@ -36,7 +36,7 @@
         },
         "omp": {
             "default_config_options": {
-                "model": "anthropic/claude-sonnet-5-5",
+                "model": "anthropic/claude-opus-5-5",
                 "thinking": "high",
                 "mode": "default"
             },
@@ -119,7 +119,6 @@
     "tab_size": 4,
     "soft_wrap": "none",
     "autosave": "on_focus_change",
-    "code_lens": "on",
     // ----------------------------------------------
     // Coding
     // ----------------------------------------------

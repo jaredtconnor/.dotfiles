@@ -56,6 +56,7 @@ AppData
 .chezmoiscripts/link-omp-shim.sh
 .chezmoiscripts/mise-setup.sh
 .chezmoiscripts/pi-agent-setup.sh
+.chezmoiscripts/retire-sync-notes.sh
 .chezmoiscripts/symlink-ai-mirror.sh
 .chezmoiscripts/windows-paths.sh
 
@@ -95,6 +96,8 @@ AppData
 # Linux-only (VS Code on Linux uses ~/.config/Code/ instead of ~/Library)
 .config/Code
 .config/Cursor
+# systemd user units (obsidian-autopush) exist only on Linux
+.config/systemd
 {{- end }}
 
 {{- $ident := dict }}
