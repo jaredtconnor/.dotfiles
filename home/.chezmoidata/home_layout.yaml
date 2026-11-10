@@ -1,6 +1,7 @@
 # Home directory layout — the single source of truth for the top-level "buckets"
-# and their nested subfolders. Consumed at `chezmoi apply` by:
-#   - dot_local/bin/executable_dev-setup.tmpl                     (macOS/Linux, canonical)
+# and their nested subfolders. Consumed at `chezmoi apply` through the
+# .chezmoitemplates/home-layout-dirs partial by:
+#   - dot_local/bin/executable_dev-setup.tmpl                     (every layout host)
 #   - .chezmoiscripts/run_once_after_create-home-layout.sh.tmpl   (macOS/Linux)
 #   - .chezmoiscripts/run_once_after_create-home-layout.ps1.tmpl  (Windows)
 #
@@ -8,9 +9,15 @@
 # Each key is a top-level bucket under $HOME; its list is the subfolders to
 # create inside it (empty list = bucket only). Directories are made with
 # `mkdir -p`, so parents are implicit. Iterated in alphabetical key order.
+# What belongs in each bucket, and the sweep that sorts strays into them, is
+# ~/.config/home-tidy/rules (`home-tidy`).
 #
 # NOTE: Code is intentionally flat ([]). Its host/owner/repo tree (and gwq
 # worktrees) is created on demand by ghq/gwq — never pre-seed it here.
+# Windows skips Code: repos live flat in windows_code_root, because nested
+# ~/Code/<host>/<owner>/<repo> paths run into MAX_PATH (260) in Windows tooling.
+
+windows_code_root: 'C:\Git'
 
 home_layout:
   Code: []
@@ -24,7 +31,9 @@ home_layout:
     - databases
     - datasets
 
-  Tools: []
+  Tools:
+    - bin
+    - scripts
 
   Sandbox:
     - forks
@@ -33,3 +42,24 @@ home_layout:
     - temp
 
   Archives: []
+
+# Exactly one of home_layout_work / home_layout_personal is added, keyed on the
+# chezmoi `work` flag (.chezmoi.toml.tmpl). Working files stay here, out of the
+# synced Notes vaults.
+#
+# Work-profile hosts:
+home_layout_work:
+  Work:
+    - Issues      # Issues/<KEY>: per-ticket scripts, queries, logs, data
+    - Projects    # Projects/<name>: evidence for Notes/work/020 Projects/<name>
+    - Scripts     # reusable work scripts not tied to one ticket
+    - References  # user guides, training material, licenses
+    - Releases    # installer and build drops
+    - Reviews     # PR review guides
+
+# Every other layout host:
+home_layout_personal:
+  Personal:
+    - Projects    # Projects/<name>: working files for Notes/personal/040 Projects/<name>
+    - Scripts     # reusable scripts, queries, one-off tooling
+    - References  # manuals, papers, reference material

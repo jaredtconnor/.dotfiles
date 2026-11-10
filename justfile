@@ -183,6 +183,10 @@ doctor-all:
 share-keys KEY="id_ed25519":
     @share-ssh-keys {{ KEY }}
 
+# Create the home layout buckets, then list strays home-tidy would sort (`just home --apply` moves them)
+home *ARGS:
+    @bash ~/.local/bin/dev-setup >/dev/null && bash ~/.local/bin/home-tidy {{ ARGS }}
+
 # No shebang: on Windows just needs cygpath for shebang recipes, plain recipes run under Git's sh.
 # Format lua + shell files (stylua + shfmt)
 format:

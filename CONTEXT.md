@@ -21,7 +21,7 @@ A configured directory that `prj` searches for Project locations on one machine.
 _Avoid_: Project, repository
 
 **Code root**:
-The `~/Code` directory where `prj` stores durable Project locations.
+The `~/Code` directory where `prj` stores durable Project locations. On Windows it is `C:\Git`, flat (`C:\Git\<repository>`), because nested paths exceed the 260-character `MAX_PATH` in Windows tooling.
 _Avoid_: Workspace, Sandbox
 
 **Sandbox**:

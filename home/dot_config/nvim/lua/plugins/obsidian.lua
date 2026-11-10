@@ -7,9 +7,6 @@ return {
   event = {
     "BufReadPre " .. vim.fn.expand("~") .. "/Notes/**.md",
     "BufNewFile " .. vim.fn.expand("~") .. "/Notes/**.md",
-
-    "BufReadPre " .. vim.fn.expand("~") .. "/work-notes/**.md",
-    "BufNewFile " .. vim.fn.expand("~") .. "/work-notes/**.md",
   },
 
   dependencies = {
@@ -22,11 +19,11 @@ return {
     workspaces = {
       {
         name = "personal",
-        path = "~/personal-notes/",
+        path = "~/Notes/personal/",
       },
       {
         name = "work",
-        path = "~/work-notes/",
+        path = "~/Notes/work/",
       },
     },
 

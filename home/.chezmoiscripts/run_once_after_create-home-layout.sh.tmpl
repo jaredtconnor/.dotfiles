@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 {{/*
-    One-shot creation of the top-level home buckets (Code, Notes, Data, Tools,
-    Sandbox, Archives). Runs once (run_once_) after files are applied, so the
+    One-shot creation of the top-level home buckets listed in
+    .chezmoidata/home_layout.yaml. Runs once (run_once_) after files are applied, so the
     dev-setup helper is already at ~/.local/bin. No-op on Windows (handled by
     the .ps1 variant; this .sh is also ignored there via .chezmoiignore).
 */}}
@@ -12,12 +12,10 @@ if [[ -f "$HOME/.local/bin/dev-setup" ]]; then
     bash "$HOME/.local/bin/dev-setup"
 else
     # Fallback if the helper is missing: same source of truth (home_layout.yaml).
-{{- range $bucket, $subs := .home_layout }}
-    mkdir -p "$HOME/{{ $bucket }}"
-{{- range $sub := $subs }}
-    mkdir -p "$HOME/{{ $bucket }}/{{ $sub }}"
-{{- end }}
-{{- end }}
+    DIRS=(
+{{- template "home-layout-dirs" . }}
+    )
+    for rel in "${DIRS[@]}"; do mkdir -p "$HOME/$rel"; done
     echo "Home layout ready under $HOME"
 fi
 {{- else -}}

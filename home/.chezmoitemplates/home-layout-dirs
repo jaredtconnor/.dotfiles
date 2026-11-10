@@ -1,0 +1,17 @@
+{{- /*
+    Quoted home-relative layout dirs, one per line, for a bash or PowerShell
+    array literal. Source: .chezmoidata/home_layout.yaml, plus home_layout_work
+    on work hosts or home_layout_personal everywhere else. Windows skips Code
+    (repos live in windows_code_root).
+*/ -}}
+{{- $extra := .home_layout_personal -}}
+{{- if .work }}{{ $extra = .home_layout_work }}{{ end -}}
+{{- $layout := merge (dict) .home_layout $extra -}}
+{{- range $bucket, $subs := $layout }}
+{{- if not (and (eq $bucket "Code") (eq $.chezmoi.os "windows")) }}
+    {{ $bucket | quote }}
+{{- range $sub := $subs }}
+    {{ (printf "%s/%s" $bucket $sub) | quote }}
+{{- end }}
+{{- end }}
+{{- end -}}

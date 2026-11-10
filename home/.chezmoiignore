@@ -79,7 +79,6 @@ AppData
 # (Windows runs them via Git's bundled sh). See dot_config/git/config.tmpl.
 .local/bin/clear-icon-cache
 .local/bin/cws
-.local/bin/dev-setup
 .local/bin/fcom
 .local/bin/fdd
 .local/bin/fjq
@@ -140,17 +139,24 @@ Library/LaunchAgents/com.jared.helium-sync.plist
 .chezmoiscripts/helium-sync-bootstrap.sh
 {{- end }}
 
-{{- if not .workstation }}
-# Dev-workstation feature — home layout buckets + ghq/gwq repo navigation.
-# Applies ONLY on the personal dev workstations; every other host (servers and
-# otherwise) skips it. See $workstationHostnames in .chezmoi.toml.tmpl.
+{{- if not (or .workstation .work) }}
+# Home layout buckets (home_layout.yaml) + home-tidy: personal dev workstations
+# and work machines. Servers and other hosts skip them.
 .chezmoiscripts/create-home-layout.sh
 .chezmoiscripts/create-home-layout.ps1
+.config/home-tidy/**
+.local/bin/dev-setup
+.local/bin/home-tidy
+{{- end }}
+
+{{- if not .workstation }}
+# Dev-workstation feature — ghq/gwq repo navigation under ~/Code.
+# Applies ONLY on the personal dev workstations; every other host (servers and
+# otherwise) skips it. See $workstationHostnames in .chezmoi.toml.tmpl.
 .chezmoiscripts/install-repo-tools.ps1
 .config/gwq/**
 .config/zsh/aliases/ghq.aliases.sh
 .config/zsh/functions/ghq.functions.sh
-.local/bin/dev-setup
 {{- end }}
 
 # Editor variants not currently used

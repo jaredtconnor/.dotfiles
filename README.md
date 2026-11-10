@@ -45,8 +45,8 @@ Secrets live in neither repo. The 1Password SSH agent serves private keys, `~/.e
 | Flag | Set when | Effect |
 |---|---|---|
 | `server` | `CHEZMOI_SERVER` is set, or the hostname is in the companion's `server_hostnames` | Allowlist: only `~/.ssh/config`, `~/.ssh/hosts`, and `~/.config/git/`. No shell frameworks, editors, desktop apps, agent runtimes, or run scripts. The only external is the companion. |
-| `work` | Never on servers. Otherwise: `CHEZMOI_WORK` is set, the hostname matches the companion's `work_hostname`, or you answer yes to the one-time prompt | Work Git identity and SSH key, plus the `~/.agent-tooling-work` overlay from the work GitHub org |
-| `workstation` | The hostname is in the companion's `workstation_hostnames` | Home layout buckets (`~/Code`, `~/Notes`, `~/Data`, `~/Tools`, `~/Sandbox`, `~/Archives`), ghq/gwq repo navigation, `dev-setup` |
+| `work` | Never on servers. Otherwise: `CHEZMOI_WORK` is set, the hostname matches the companion's `work_hostname`, or you answer yes to the one-time prompt | Work Git identity and SSH key, the `~/.agent-tooling-work` overlay from the work GitHub org, and the [home layout](#home-layout) plus `~/Work` |
+| `workstation` | The hostname is in the companion's `workstation_hostnames` | The [home layout](#home-layout) (plus `~/Personal` when not `work`), ghq/gwq repo navigation |
 
 Some features are limited to specific hosts listed in the companion:
 
@@ -138,6 +138,7 @@ The work laptop is left out on purpose. It's network-isolated from the homelab, 
 | `just doctor-all` | `chezmoi doctor` here, plus the chezmoi version on each host |
 | `just share-keys` | Install the homelab admin public key on each host. The key is fetched from 1Password; the private key never leaves it. |
 | `just status` | `chezmoi diff` |
+| `just home` | Create the [home layout](#home-layout) buckets, then list the strays `home-tidy` would sort. `just home --apply` moves them. |
 | `just verify-publication` | Scan the tree for private data before pushing (see [Publishing](#publishing)) |
 
 ### Adding a Machine
@@ -271,6 +272,23 @@ Pi's own setup is the `pi-agent-setup` external at `~/.pi/agent`, a fork of davi
 Personal-life skills for Hermes (planning, goals) live in the private `life-ops` repo instead. Only the Hermes host clones it, and Hermes loads `~/.life-ops/skills` through `skills.external_dirs` in its config. Those skills are not mirrored into the coding agents.
 
 Machine-specific AI settings and ccstatusline config live directly in this repo under `home/dot_claude/` and `home/dot_config/ccstatusline/`.
+
+### Home Layout
+
+`home/.chezmoidata/home_layout.yaml` lists the top-level buckets, and `dev-setup` (or the run-once layout script on `chezmoi apply`) creates them. Workstations and the work laptop get the layout; servers don't.
+
+| Bucket | Holds |
+|---|---|
+| `~/Code` | Git repos only, `<host>/<owner>/<repo>` via ghq. Windows skips it: repos live flat in `C:\Git`, since nested paths hit the 260-character `MAX_PATH` in Windows tooling |
+| `~/Notes/work`, `~/Notes/personal` | Obsidian vaults: notes and images only, because the vaults sync to every device |
+| `~/Data/databases`, `~/Data/datasets` | bacpac/dacpac backups; csv/xlsx exports and corpora |
+| `~/Tools/bin`, `~/Tools/scripts` | Portable binaries; personal machine scripts |
+| `~/Sandbox` | Throwaway experiments and non-git projects |
+| `~/Archives` | Stale copies and old logs or dumps, kept in case |
+| `~/Work` (`work` hosts) | `Issues/<KEY>` holds per-ticket scripts, queries, logs and data. `Projects/<name>` holds evidence for a vault project. `Scripts`, `References`, `Releases` and `Reviews` cover the rest |
+| `~/Personal` (every other host) | The same idea for personal work: `Projects/<name>` for a `Notes/personal` project's working files, `Scripts`, and `References` |
+
+`home-tidy` keeps it that way. It scans `~`, Downloads, Desktop, Documents and Data and moves each stray to the bucket its rule names. A name containing a ticket key (`ALM-610`, `alm717`) goes to `~/Work/Issues/<KEY>`. It also lists any file in a vault that is not a note or an image. A plain run is a dry run and `--apply` does the moves. It never overwrites, never deletes, and never creates a missing bucket. Rules live in `home/dot_config/home-tidy/rules.tmpl`, with the format documented at the top. An entry with no rule is reported as `left` and stays put; add a rule or a `keep` for it.
 
 ### Notes Sync
 

@@ -1,0 +1,193 @@
+#!/usr/bin/env bash
+#
+# home-tidy — sort strays in the landing zones (Downloads, Desktop, ...) into the
+# home layout buckets that dev-setup creates, and flag non-note files in vaults.
+#
+#   home-tidy           dry run: print what would move, what has no rule
+#   home-tidy --apply   move it. Never overwrites, never deletes.
+#
+# Rules: ~/.config/home-tidy/rules (HOME_TIDY_RULES overrides); the format is
+# documented at the top of that file. Entries only move into a bucket that
+# already exists, so run dev-setup first on a new machine.
+# Plain bash 3.2 (macOS /bin/bash) and Git Bash on Windows.
+set -euo pipefail
+
+RULES="${HOME_TIDY_RULES:-$HOME/.config/home-tidy/rules}"
+apply=0
+case "${1:-}" in
+"") ;;
+--apply) apply=1 ;;
+-h | --help)
+    sed -n '3,9p' "$0" | sed 's/^# \{0,1\}//'
+    exit 0
+    ;;
+*)
+    echo "home-tidy: unknown option: $1 (try --help)" >&2
+    exit 2
+    ;;
+esac
+[[ -f "$RULES" ]] || {
+    echo "home-tidy: no rules file at $RULES" >&2
+    exit 1
+}
+
+zones=() keeps=() prefixes=() vaults=() exts=() globs=() dests=()
+ticket_dest=""
+trim() {
+    local s="$1"
+    s="${s#"${s%%[![:space:]]*}"}"
+    printf '%s' "${s%"${s##*[![:space:]]}"}"
+}
+while IFS= read -r line || [[ -n "$line" ]]; do
+    line="${line%$'\r'}"
+    [[ "$line" =~ ^[[:space:]]*(#|$) ]] && continue
+    if [[ "$line" == *" -> "* ]]; then
+        globs+=("$(trim "${line%% -> *}")")
+        dests+=("$(trim "${line#* -> }")")
+        continue
+    fi
+    read -r key rest <<<"$line"
+    case "$key" in
+    zone) zones+=("$rest") ;;
+    keep) keeps+=("$rest") ;;
+    ticket) for p in $rest; do prefixes+=("$p"); done ;;
+    ticket-dest) ticket_dest="$rest" ;;
+    vault) vaults+=("$rest") ;;
+    note-ext) for e in $rest; do exts+=("$e"); done ;;
+    *)
+        echo "home-tidy: bad rule in $RULES: $line" >&2
+        exit 2
+        ;;
+    esac
+done <"$RULES"
+
+shopt -s nocasematch nullglob
+
+# matches <glob> <name> <zone-relative path> <is-dir>: a glob with a "/" matches
+# the path from $HOME, otherwise the bare name; a trailing "/" means dirs only.
+matches() {
+    local g="$1" name="$2" rel="$3" isdir="$4"
+    if [[ "$g" == */ ]]; then
+        [[ "$isdir" == 1 ]] || return 1
+        g="${g%/}"
+    fi
+    if [[ "$g" == */* ]]; then
+        [[ "$rel" == $g ]]
+    else
+        [[ "$name" == $g ]]
+    fi
+}
+
+# ticket_for <name>: prints PREFIX-<n> for the first ticket key in the name.
+ticket_for() {
+    local p
+    for p in ${prefixes[@]+"${prefixes[@]}"}; do
+        if [[ "$1" =~ (^|[^[:alnum:]])$p-?([0-9]+)([^0-9]|$) ]]; then
+            printf '%s-%s' "$(printf '%s' "$p" | tr '[:lower:]' '[:upper:]')" "${BASH_REMATCH[2]}"
+            return 0
+        fi
+    done
+    return 1
+}
+
+moved=0 skipped=0 left=0 strays=0
+move() {
+    local src="$1" rel="$2" dest="$3" name target
+    name="$(basename "$src")"
+    target="$HOME/$dest/$name"
+    if [[ ! -d "$HOME/${dest%%/*}" ]]; then
+        printf 'skip   %s: no ~/%s bucket (run dev-setup)\n' "$rel" "${dest%%/*}"
+        skipped=$((skipped + 1))
+        return
+    fi
+    if [[ -e "$target" || -L "$target" ]]; then
+        printf 'skip   %s: %s/%s already exists\n' "$rel" "$dest" "$name"
+        skipped=$((skipped + 1))
+        return
+    fi
+    printf 'move   %s -> %s/\n' "$rel" "$dest"
+    moved=$((moved + 1))
+    if ((apply)); then
+        mkdir -p "$HOME/$dest"
+        if ! mv -- "$src" "$target" 2>/dev/null || [[ ! -e "$target" ]]; then
+            printf 'FAILED %s (in use?)\n' "$rel"
+            moved=$((moved - 1))
+            skipped=$((skipped + 1))
+        fi
+    fi
+}
+
+for zone in ${zones[@]+"${zones[@]}"}; do
+    zdir="$HOME/$zone"
+    [[ "$zone" == "." ]] && zdir="$HOME"
+    [[ -d "$zdir" ]] || continue
+    for src in "$zdir"/*; do
+        name="$(basename "$src")"
+        rel="$name"
+        [[ "$zone" == "." ]] || rel="$zone/$name"
+        isdir=0
+        [[ -d "$src" && ! -L "$src" ]] && isdir=1
+
+        kept=0
+        for g in ${keeps[@]+"${keeps[@]}"}; do
+            if matches "$g" "$name" "$rel" "$isdir"; then
+                kept=1
+                break
+            fi
+        done
+        ((kept)) && continue
+
+        if [[ -n "$ticket_dest" ]] && key="$(ticket_for "$name")"; then
+            # A folder already named for the ticket becomes Issues/<KEY> itself.
+            if [[ "$isdir" == 1 && "$name" == "$key" ]]; then
+                move "$src" "$rel" "$ticket_dest"
+            else
+                move "$src" "$rel" "$ticket_dest/$key"
+            fi
+            continue
+        fi
+
+        dest=""
+        for i in ${globs[@]+"${!globs[@]}"}; do
+            if matches "${globs[$i]}" "$name" "$rel" "$isdir"; then
+                dest="${dests[$i]}"
+                break
+            fi
+        done
+        if [[ -z "$dest" ]]; then
+            printf 'left   %s (no rule)\n' "$rel"
+            left=$((left + 1))
+        elif [[ "$dest" != "$zone" ]]; then
+            move "$src" "$rel" "$dest"
+        fi
+    done
+done
+
+# Vaults sync to every device: anything that is not a note or image is
+# reported (never moved, since notes may link to it). Dotfiles and dot-dirs
+# (.obsidian, .trash, .git) are vault machinery and skipped.
+for v in ${vaults[@]+"${vaults[@]}"}; do
+    [[ -d "$HOME/$v" ]] || continue
+    while IFS= read -r -d '' f; do
+        name="${f##*/}"
+        ext=""
+        [[ "$name" == *.* ]] && ext="${name##*.}"
+        ok=0
+        for e in ${exts[@]+"${exts[@]}"}; do
+            if [[ "$ext" == "$e" ]]; then
+                ok=1
+                break
+            fi
+        done
+        ((ok)) && continue
+        printf 'vault  %s\n' "${f#"$HOME/"}"
+        strays=$((strays + 1))
+    done < <(find "$HOME/$v" -mindepth 1 -name '.*' -prune -o -type f -print0)
+done
+
+verb="to move"
+((apply)) && verb="moved"
+printf '\n%d %s, %d skipped, %d without a rule, %d vault strays\n' "$moved" "$verb" "$skipped" "$left" "$strays"
+if ((!apply && moved > 0)); then
+    echo "Run 'home-tidy --apply' to move them."
+fi

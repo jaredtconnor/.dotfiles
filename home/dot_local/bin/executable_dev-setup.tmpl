@@ -7,25 +7,24 @@
 # file, run `chezmoi apply`, then re-run `dev-setup` to materialize changes.
 #
 # Layout (TitleCase categories; macOS system folders left untouched):
-#   ~/Code/      source repos — the ONLY repo root (managed by ghq); left flat
-#   ~/Notes/     Obsidian / work / personal notes
-#   ~/Data/      datasets, exports, non-document data
-#   ~/Tools/     local tools, binaries, scratch configs
+#   ~/Code/      source repos — the ONLY repo root (managed by ghq); left flat.
+#                Not on Windows: repos live flat in C:\Git (windows_code_root).
+#   ~/Notes/     Obsidian vaults: Notes/work, Notes/personal
+#   ~/Data/      databases, datasets, non-document data
+#   ~/Tools/     local binaries and personal machine scripts
 #   ~/Sandbox/   throwaway experiments
 #   ~/Archives/  backups and long-term snapshots
+#   ~/Work/      work hosts only: Issues/<KEY>, Projects, Scripts, References, ...
+#   ~/Personal/  every other host: Projects, Scripts, References
 #
 # Repos go under ~/Code via ghq: `clone <url>` (or `ghq get <url>`), then jump
 # with `repo` / `wt`. See ~/.config/gwq/config.toml and git config ghq.root.
+# `home-tidy` sorts strays (Downloads, Desktop, ...) into these buckets.
 set -euo pipefail
 
 # Generated from home_layout.yaml. Relative to $HOME; nesting via `mkdir -p`.
 DIRS=(
-{{- range $bucket, $subs := .home_layout }}
-    {{ $bucket | quote }}
-{{- range $sub := $subs }}
-    {{ (printf "%s/%s" $bucket $sub) | quote }}
-{{- end }}
-{{- end }}
+{{- template "home-layout-dirs" . }}
 )
 
 for rel in "${DIRS[@]}"; do
@@ -38,6 +37,10 @@ for rel in "${DIRS[@]}"; do
     fi
 done
 
+{{ if eq .chezmoi.os "windows" -}}
+printf '\nHome layout ready. Repo root: %s (flat, short paths)\n' {{ .windows_code_root | quote }}
+{{- else -}}
 root="$(git config --get ghq.root 2>/dev/null || echo "$HOME/Code")"
 printf '\nHome layout ready. Repo root: %s\n' "$root"
 printf "Clone a repo:  clone <url|host/owner/repo>   |   Jump:  repo / wt\n"
+{{- end }}

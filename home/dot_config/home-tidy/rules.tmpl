@@ -1,0 +1,157 @@
+# home-tidy rules: where strays belong in the home layout (home_layout.yaml).
+# Read top to bottom; the first matching rule wins. Paths are relative to $HOME.
+# Globs are case-insensitive. A glob with a "/" matches the path from $HOME
+# (Documents/Receipts), otherwise the bare entry name. A glob ending in "/"
+# matches directories only. Dotfiles are never touched.
+#
+#   zone <dir>            scan the top level of <dir> for strays ("." = $HOME)
+#   keep <glob>           never move or report a matching entry
+#   ticket <PREFIX>...    a name holding PREFIX-<n> (or PREFIX<n>) moves to
+#   ticket-dest <dir>       <dir>/PREFIX-<n>, ahead of the glob rules
+#   vault <dir>           report files in <dir> that are not notes/attachments
+#   note-ext <ext>...     extensions a vault may hold
+#   <glob> -> <dest>      move a matching entry into <dest>
+
+zone Downloads
+zone Desktop
+zone Documents
+zone Data
+zone .
+
+vault Notes/work
+vault Notes/personal
+# Images stay in the vaults; any other file (data, scripts, PDFs) belongs in a bucket
+note-ext md canvas base excalidraw png jpg jpeg gif svg webp
+
+# Layout buckets and standard profile folders
+keep Archives
+keep Code
+keep Data
+keep Notes
+keep Sandbox
+keep Tools
+keep Personal
+keep Work
+keep Data/databases
+keep Data/datasets
+keep Desktop
+keep Documents
+keep Downloads
+keep Music
+keep Pictures
+keep Public
+keep Videos
+keep bin
+keep go
+keep secrets
+keep *.lnk
+keep *.url
+keep desktop.ini
+keep ~$*
+keep Documents/bruno
+{{- if eq .chezmoi.os "darwin" }}
+keep Applications
+keep Library
+keep Movies
+{{- end }}
+{{- if eq .chezmoi.os "windows" }}
+
+# Windows profile junctions, registry hives, app-owned folders
+keep AppData
+keep Application Data
+keep Contacts
+keep Cookies
+keep Favorites
+keep Links
+keep Local Settings
+keep My Documents
+keep NetHood
+keep PrintHood
+keep Recent
+keep Saved Games
+keep Searches
+keep SendTo
+keep Start Menu
+keep Templates
+keep NTUSER.DAT*
+keep ntuser.*
+keep Dropbox
+keep OneDrive*
+keep AzuriteConfig
+keep IntelGraphicsProfiles
+keep pipx
+keep Postman
+keep scoop
+keep source
+keep vscode-remote-wsl
+keep Documents/Custom Office Templates
+keep Documents/Default.rdp
+keep Documents/IISExpress
+keep Documents/My *
+keep Documents/OneNote Notebooks
+keep Documents/PowerToys
+keep Documents/Powershell
+keep Documents/WindowsPowerShell
+keep Documents/SQL Server Management Studio*
+keep Documents/Visual Studio*
+keep Documents/Zoom
+keep Documents/ComponentOne Samples
+{{- end }}
+
+# Documents keeps personal records: receipts, expenses
+keep Documents/Receipts
+keep Documents/Expenses
+Receipts/ -> Documents
+Expenses/ -> Documents
+{{- if .work }}
+
+# Work: ticket files first, then build drops, documents and license files
+ticket ALM
+ticket-dest Work/Issues
+Setup_* -> Work/Releases
+Planning_Service_* -> Work/Releases
+Empyrean_ALM_* -> Work/Releases
+*.elic -> Work/References
+*.msg -> Work/References
+*.pdf -> Work/References
+*.docx -> Work/References
+*.doc -> Work/References
+*.pptx -> Work/References
+*.sql -> Work/Scripts
+*.ps1 -> Work/Scripts
+*.sh -> Work/Scripts
+*.py -> Work/Scripts
+{{- else }}
+
+# Personal: scripts and reference documents
+*.pdf -> Personal/References
+*.docx -> Personal/References
+*.doc -> Personal/References
+*.pptx -> Personal/References
+*.sql -> Personal/Scripts
+*.ps1 -> Personal/Scripts
+*.sh -> Personal/Scripts
+*.py -> Personal/Scripts
+{{- end }}
+
+# Remote desktop: RDCMan groups stay where RDCMan opens them
+keep *.rdg
+*.rdp -> Tools
+
+# Data
+*.bacpac -> Data/databases
+*.dacpac -> Data/databases
+*.bak -> Data/databases
+*.csv -> Data/datasets
+*.tsv -> Data/datasets
+*.parquet -> Data/datasets
+*.xlsx -> Data/datasets
+*.xls -> Data/datasets
+
+# Media
+*.mp4 -> Videos
+*.mov -> Videos
+*.mkv -> Videos
+*.png -> Pictures
+*.jpg -> Pictures
+*.jpeg -> Pictures
