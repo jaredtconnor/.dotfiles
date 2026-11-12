@@ -96,6 +96,16 @@ keep Documents/SQL Server Management Studio*
 keep Documents/Visual Studio*
 keep Documents/Zoom
 keep Documents/ComponentOne Samples
+keep Documents/Autodesk
+keep Documents/Battlefield*
+keep Documents/Call of Duty
+keep Documents/Chief Architect*
+keep Documents/Home Designer*
+keep Documents/League of Legends
+keep Documents/Overwatch
+keep Documents/Quicken
+# Synology Drive Client sync root (cloud-files reparse point)
+keep Nas
 {{- end }}
 
 # Documents keeps personal records: receipts, expenses
@@ -155,3 +165,32 @@ keep *.rdg
 *.png -> Pictures
 *.jpg -> Pictures
 *.jpeg -> Pictures
+
+# Quicken data file sets (.QDF + OFXLOG.DAT + SyncLog.dat) and backups
+*.QDF-backup -> Documents/Quicken/BACKUP
+*.QDF -> Documents/Quicken
+*OFXLOG.DAT -> Documents/Quicken
+*_SyncLog.dat -> Documents/Quicken
+
+# winget package export used to rebuild a Windows machine
+windows-setup.json -> Personal/References
+
+# Downloaded software: superseded once installed, kept in Archives in case.
+# Portable tools first so they don't land in Archives with the installers.
+ventoy-*/ -> Tools
+*.exe -> Archives/installers
+*.msi -> Archives/installers
+*.msix -> Archives/installers
+*.msixbundle -> Archives/installers
+*.dmg -> Archives/installers
+*.pkg -> Archives/installers
+*.streamDeckProfile -> Archives/installers
+*.iso -> Archives/disk-images
+*.bin -> Archives/firmware
+*.zip -> Archives/downloads
+*.rar -> Archives/downloads
+*.7z -> Archives/downloads
+*.winmd -> Archives/downloads
+*.log -> Archives/downloads
+# Extracted downloads (unpacked installers, drivers, software suites)
+Downloads/*/ -> Archives/downloads
