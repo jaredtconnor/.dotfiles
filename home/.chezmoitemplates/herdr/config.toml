@@ -31,6 +31,7 @@ detach = "prefix+d"            # tmux d
 resize_mode = "prefix+shift+r" # repeatable h/j/k/l resizing, like tmux -r
 
 # Panes
+close_pane = "prefix+x"
 split_vertical = "prefix+|" # tmux | (split right)
 resize_pane_left = "prefix+shift+h"  # tmux H/J/K/L
 resize_pane_down = "prefix+shift+j"
