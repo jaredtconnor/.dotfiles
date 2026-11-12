@@ -46,6 +46,12 @@
     autocrlf = input
     eol = lf
     whitespace = cr-at-eol
+{{- if eq .chezmoi.os "windows" }}
+    # Git for Windows' bundled ssh cannot reach the 1Password agent's named pipe
+    # (\\.\pipe\openssh-ssh-agent); Windows OpenSSH can. Without this, every
+    # Forgejo pull/push and the ssh:// externals fail with publickey.
+    sshCommand = C:/Windows/System32/OpenSSH/ssh.exe
+{{- end }}
 
 [color]
     ui = auto
