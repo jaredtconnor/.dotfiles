@@ -36,6 +36,7 @@ Library
 {{- if ne .chezmoi.os "windows" }}
 # Windows-only
 .config/powershell
+Documents/PowerShell
 AppData
 .chezmoiscripts/*.ps1
 {{- end }}
