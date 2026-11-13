@@ -32,7 +32,9 @@
 {{-   $work = promptBoolOnce . "work" "Is this a work machine" -}}
 {{- end -}}
 
-{{- /* Work machines use Beyond Compare for chezmoi diff/merge when installed.
+{{- /* Work machines use Beyond Compare for chezmoi merge when installed. `chezmoi diff`
+       stays in the terminal (built-in diff, delta when present) so it doesn't open a
+       Beyond Compare window per changed file.
        Windows installs don't put BComp.exe on PATH, so check install dirs too. */ -}}
 {{- $bcomp := "" -}}
 {{- if $work -}}
@@ -59,17 +61,14 @@ destDir = {{ $destDir | quote }}
 
 [edit]
     command = "nvim"
-{{ if $bcomp }}
+{{ if lookPath "delta" }}
 [diff]
-    command = {{ $bcomp | quote }}
-    args = [{{ "{{ .Destination }}" | quote }}, {{ "{{ .Target }}" | quote }}]
-
+    pager = "delta"
+{{ end }}
+{{- if $bcomp }}
 [merge]
     command = {{ $bcomp | quote }}
     args = [{{ "{{ .Destination }}" | quote }}, {{ "{{ .Source }}" | quote }}, {{ "{{ .Target }}" | quote }}, {{ "{{ .Source }}" | quote }}]
-{{ else if lookPath "delta" }}
-[diff]
-    pager = "delta"
 {{ end }}
 
 [onepassword]
