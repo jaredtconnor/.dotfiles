@@ -204,6 +204,7 @@
     branches = branch -a --sort=-authordate
     branch = branch --sort=-authordate
     branch-activity = for-each-ref --format='%(authordate) %(refname)' --sort=-committerdate refs/heads refs/remotes
+    br = for-each-ref --sort=-committerdate --exclude=refs/heads/archive refs/heads --format='%(committerdate:short)  %(refname:short)  %(upstream:short) %(upstream:track)'
     merged = "!f () { git branch --merged | grep -v \"$(basename \"$(git symbolic-ref --short refs/remotes/origin/HEAD)\")\" | grep -v '*' | sed 's/^..//'; };f"
     merc = merge --no-ff
     safe-checkout = "!git stash push -m \"co backup\"; git stash apply; git checkout \"$@\""

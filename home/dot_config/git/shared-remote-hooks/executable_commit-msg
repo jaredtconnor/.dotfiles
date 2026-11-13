@@ -1,0 +1,23 @@
+#!/bin/sh
+# commit-msg hook: strips Claude Code and Cursor attribution from the commit message.
+# Human co-authors (including GitHub noreply addresses) stay. Installed per repo into
+# .git/hooks by `git shared-hooks install`.
+#   Co-Authored-By: Claude ... <noreply@anthropic.com>
+#   Co-authored-by: Cursor <cursoragent@cursor.com>
+#   Made-with: Cursor
+#   Generated with [Claude Code](https://claude.com/claude-code)
+msg="$1"
+[ -f "$msg" ] || exit 0
+tmp="$msg.strip.$$"
+awk '
+{
+  l = tolower($0)
+  if (l ~ /^co-authored-by:/ && (l ~ /@anthropic\.com>/ || l ~ /cursoragent@cursor\.com>/ || l ~ /^co-authored-by:[ \t]*(claude|cursor)[ \t(<]/)) next
+  if (l ~ /^made-with:[ \t]*cursor/) next
+  if (l ~ /generated with \[?claude code/) next
+  lines[++n] = $0
+}
+END {
+  while (n > 0 && lines[n] ~ /^[ \t]*$/) n--
+  for (i = 1; i <= n; i++) print lines[i]
+}' "$msg" > "$tmp" && mv "$tmp" "$msg"

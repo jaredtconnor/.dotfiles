@@ -1,0 +1,39 @@
+#!/usr/bin/env bash
+# git shared-hooks [install|check] [--force]
+# Copies the hooks in ~/.config/git/shared-remote-hooks into the current repo's .git/hooks
+# (shared by all its worktrees). Copies, not core.hooksPath: Visual Studio runs hooks
+# through WSL bash, which can't follow a C:/ hooksPath (see ~/.config/git/config).
+#   install   copy hooks; refuses to replace a different existing hook unless --force
+#   check     report whether each installed hook matches the source
+set -euo pipefail
+
+src="$HOME/.config/git/shared-remote-hooks"
+mode="${1:-check}"
+force="${2:-}"
+[[ "$mode" == install || "$mode" == check ]] || { echo "usage: git shared-hooks [install|check] [--force]" >&2; exit 2; }
+[[ -d "$src" ]] || { echo "missing $src (run chezmoi apply)" >&2; exit 1; }
+
+dest="$(git rev-parse --path-format=absolute --git-common-dir)/hooks"
+hp="$(git config --get core.hooksPath || true)"
+if [[ -n "$hp" ]]; then
+  echo "core.hooksPath is set to '$hp', so git ignores $dest." >&2
+  echo "Unset it first if it's stale: git config --unset core.hooksPath" >&2
+  exit 1
+fi
+
+status=0
+for f in "$src"/*; do
+  name="$(basename "$f")"
+  target="$dest/$name"
+  if [[ -f "$target" ]] && cmp -s "$f" "$target"; then
+    echo "ok        $name"
+  elif [[ "$mode" == check ]]; then
+    echo "outdated  $name"; status=1
+  elif [[ -f "$target" && "$force" != --force ]]; then
+    echo "differs   $name (existing hook kept; rerun with --force to replace)"; status=1
+  else
+    cp "$f" "$target" && chmod +x "$target"
+    echo "installed $name"
+  fi
+done
+exit $status
