@@ -130,10 +130,17 @@ for zone in ${zones[@]+"${zones[@]}"}; do
 
         kept=0
         for g in ${keeps[@]+"${keeps[@]}"}; do
-            if matches "$g" "$name" "$rel" "$isdir"; then
-                kept=1
-                break
+            matches "$g" "$name" "$rel" "$isdir" || continue
+            # A keep with no wildcard names one path. On a case-sensitive
+            # filesystem a stray `code` beside the `Code` bucket is a different
+            # dir, so it is kept only if the named path is this very entry.
+            if [[ "$g" != *[*?[]* ]]; then
+                lit="${g%/}"
+                if [[ "$lit" == */* ]]; then lit="$HOME/$lit"; else lit="$zdir/$lit"; fi
+                [[ "$lit" -ef "$src" ]] || continue
             fi
+            kept=1
+            break
         done
         ((kept)) && continue
 
@@ -182,7 +189,7 @@ for v in ${vaults[@]+"${vaults[@]}"}; do
         ((ok)) && continue
         printf 'vault  %s\n' "${f#"$HOME/"}"
         strays=$((strays + 1))
-    done < <(find "$HOME/$v" -mindepth 1 -name '.*' -prune -o -type f -print0)
+    done < <(find -H "$HOME/$v" -mindepth 1 -name '.*' -prune -o -type f -print0)
 done
 
 verb="to move"

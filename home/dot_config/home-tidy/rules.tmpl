@@ -2,7 +2,9 @@
 # Read top to bottom; the first matching rule wins. Paths are relative to $HOME.
 # Globs are case-insensitive. A glob with a "/" matches the path from $HOME
 # (Documents/Receipts), otherwise the bare entry name. A glob ending in "/"
-# matches directories only. Dotfiles are never touched.
+# matches directories only. A keep with no wildcard names one path: on a
+# case-sensitive filesystem, `code` beside `Code` is still reported. Dotfiles
+# are never touched.
 #
 #   zone <dir>            scan the top level of <dir> for strays ("." = $HOME)
 #   keep <glob>           never move or report a matching entry
@@ -53,6 +55,15 @@ keep Documents/bruno
 keep Applications
 keep Library
 keep Movies
+{{- end }}
+{{- if eq .chezmoi.os "linux" }}
+
+# Linux host dirs: snapd's, plus the homelab-infra host layout
+# (bootstrap/README.md section 13): running compose stacks, qfin data, archives
+keep snap
+keep services
+keep FinanceData
+keep retired
 {{- end }}
 {{- if eq .chezmoi.os "windows" }}
 

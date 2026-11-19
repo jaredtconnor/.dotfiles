@@ -122,6 +122,24 @@ test_keep_and_dir_only_rules() {
     fi
 }
 
+test_literal_keep_is_path_exact() {
+    fresh_home
+    touch "$H/Probe"
+    if [[ -e "$H/probe" ]]; then
+        ok "literal keep is path-exact (skipped: case-insensitive filesystem)"
+        return
+    fi
+    printf 'zone .\nkeep Code\n' >>"$H/rules"
+    mkdir "$H/code"
+    touch "$H/Downloads/App.LNK"
+    tidy
+    if [[ "$out" == *"left   code (no rule)"* && "$out" != *"App.LNK"* ]]; then
+        ok "a literal keep skips a same-name, different-case dir; wildcard keeps ignore case"
+    else
+        bad "a literal keep is path-exact" "$out"
+    fi
+}
+
 test_vault_strays_are_reported_not_moved() {
     fresh_home
     mkdir -p "$H/Notes/work/Projects/x/evidence" "$H/Notes/work/.obsidian"
@@ -153,6 +171,7 @@ test_ticket_key_routes_ahead_of_globs
 test_existing_target_is_never_overwritten
 test_missing_bucket_is_not_created
 test_keep_and_dir_only_rules
+test_literal_keep_is_path_exact
 test_vault_strays_are_reported_not_moved
 test_unknown_rule_fails_loudly
 
