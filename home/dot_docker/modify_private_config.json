@@ -1,0 +1,8 @@
+{{- /* chezmoi:modify-template */ -}}
+{{- /*
+    Docker CLI config. Docker itself writes auths and currentContext (colima sets
+    its context), so this only pins the Homebrew plugin dir, where the
+    docker-compose and docker-buildx formulae install `docker compose` and
+    `docker buildx`, and keeps every other key as docker left it.
+*/ -}}
+{{ fromJson (.chezmoi.stdin | default "{}") | setValueAtPath "cliPluginsExtraDirs" (list "/opt/homebrew/lib/docker/cli-plugins") | toPrettyJson "\t" }}

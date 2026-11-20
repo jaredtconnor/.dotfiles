@@ -30,6 +30,7 @@
 .config/aerospace
 .config/raycast
 .config/espanso
+.docker/config.json
 Library
 {{- end }}
 
