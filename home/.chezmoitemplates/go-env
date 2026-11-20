@@ -1,0 +1,8 @@
+{{- /*
+    Go's own env file (`go env GOENV`). Every go process reads it, including
+    non-interactive shells, agents and mise builds that never source
+    ~/.config/zsh/paths/go.path.sh, so GOPATH no longer falls back to ~/go.
+    A GOPATH env var still overrides it. `go env -w` edits are overwritten on
+    apply: add settings here instead.
+*/ -}}
+GOPATH={{ joinPath .chezmoi.homeDir ".local" "share" "go" }}

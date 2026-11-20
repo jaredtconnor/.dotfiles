@@ -99,6 +99,8 @@ AppData
 .config/Cursor
 # systemd user units (obsidian-autopush) exist only on Linux
 .config/systemd
+# Go's env file: macOS reads Library/Application Support/go/env instead
+.config/go
 {{- end }}
 
 {{- $ident := dict }}
