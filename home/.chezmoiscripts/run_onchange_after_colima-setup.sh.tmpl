@@ -1,0 +1,76 @@
+#!/usr/bin/env bash
+{{/*
+    Docker on Colima, on every Mac:
+      1. Install Rosetta 2 (amd64 images) and the colima/docker formulae.
+      2. Remove what an uninstalled OrbStack or Docker Desktop left behind: dangling
+         CLI and completion symlinks, ~/.orbstack, and the orbstack docker context.
+      3. (Re)create the default Colima VM with the settings below and run it as a
+         login service (brew services). This restarts a running Colima.
+    Re-runs when this script changes, and when OrbStack is installed or removed (the
+    marker below is part of the rendered script): while OrbStack.app is present the
+    script stops before touching Docker, so uninstalling it and running
+    `chezmoi apply` again finishes the switch.
+*/}}
+{{ if eq .chezmoi.os "darwin" -}}
+# orbstack-present: {{ if stat "/Applications/OrbStack.app" }}yes{{ else }}no{{ end }}
+set -euo pipefail
+eval "$(/opt/homebrew/bin/brew shellenv)"
+
+if [[ -d /Applications/OrbStack.app ]]; then
+    echo "colima: OrbStack is installed. Uninstall it, then run chezmoi apply to switch Docker to Colima." >&2
+    exit 0
+fi
+
+# VM size: 4 CPUs and 8 GiB, capped at half the machine.
+CPUS=4
+MEMORY_GIB=8
+half_cpus=$(($(sysctl -n hw.ncpu) / 2))
+half_ram_gib=$(($(sysctl -n hw.memsize) / 1073741824 / 2))
+((CPUS > half_cpus)) && CPUS=$half_cpus
+((MEMORY_GIB > half_ram_gib)) && MEMORY_GIB=$half_ram_gib
+
+# 1. Rosetta (installs without sudo) and the formulae, also listed in the Brewfile.
+if [[ ! -e /Library/Apple/usr/libexec/oah/libRosettaRuntime ]]; then
+    softwareupdate --install-rosetta --agree-to-license
+fi
+for formula in colima docker docker-buildx docker-compose; do
+    brew list --formula "$formula" >/dev/null 2>&1 || brew install "$formula"
+done
+
+# 2. Leftovers from an uninstalled OrbStack or Docker Desktop.
+for dir in /usr/local/bin "$HOMEBREW_PREFIX/share/zsh/site-functions" \
+    "$HOMEBREW_PREFIX/share/fish/vendor_completions.d"; do
+    [[ -d "$dir" ]] || continue
+    for link in "$dir"/*; do
+        [[ -L "$link" && ! -e "$link" ]] || continue
+        case "$(readlink "$link")" in
+        /Applications/OrbStack.app/* | /Applications/Docker.app/*)
+            rm -f "$link" 2>/dev/null && echo "colima: removed dangling $link" ||
+                echo "colima: could not remove dangling $link (needs sudo)" >&2
+            ;;
+        esac
+    done
+done
+rm -rf "$HOME/.orbstack"
+
+# 3. Create or resize the VM, then hand it to launchd. `colima start` makes the
+# colima docker context current, so the orbstack context can go after it.
+brew services stop colima >/dev/null 2>&1 || true
+colima stop >/dev/null 2>&1 || true
+colima start --cpu "$CPUS" --memory "$MEMORY_GIB" --vm-type vz --vz-rosetta --mount-type virtiofs
+if docker context inspect orbstack >/dev/null 2>&1; then
+    docker context rm orbstack >/dev/null
+fi
+colima stop
+brew services start colima
+
+# zgenom bakes the docker plugin into its init only when docker exists at save time.
+init="$HOME/.zgenom/sources/init.zsh"
+if [[ -f "$init" ]] && ! grep -q 'plugins/docker' "$init"; then
+    rm -f "$init"
+    echo "colima: zgenom init cleared; the next shell rebuilds it with the docker plugin"
+fi
+echo "colima: Docker runs on Colima (${CPUS} CPUs, ${MEMORY_GIB} GiB)"
+{{ else -}}
+exit 0
+{{ end -}}

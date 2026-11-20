@@ -50,6 +50,7 @@ AppData
 .config/herdr/**
 
 # Bash scripts cannot execute on Windows
+.chezmoiscripts/colima-setup.sh
 .chezmoiscripts/create-env-from-1password.sh
 .chezmoiscripts/create-home-layout.sh
 .chezmoiscripts/install-brewfile.sh
