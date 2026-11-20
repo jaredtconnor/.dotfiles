@@ -4,15 +4,16 @@
       1. Install the pinned obsidian-headless (ob) into its own npm prefix, and record the
          node ABI it was built for (the ~/.local/bin/ob wrapper rebuilds when that changes).
       2. (Re)load the com.jared.notes-sync LaunchAgent.
-    Re-runs whenever the pinned version, the plist, or the launcher changes (hashes below),
-    and on every apply until it succeeds. Gated to the Hermes host via .chezmoiignore;
+    Re-runs whenever the pinned version, the plist, or the launcher changes (hash lines
+    below), and on every apply until it succeeds. Gated to the Hermes host via .chezmoiignore;
     darwin-guarded here too. The vault itself is set up once by hand: README, "Notes Sync".
-
-    plist:    {{ include "Library/LaunchAgents/com.jared.notes-sync.plist.tmpl" | sha256sum }}
-    launcher: {{ include "dot_local/bin/executable_notes-sync" | sha256sum }}
-    wrapper:  {{ include "dot_local/bin/executable_ob" | sha256sum }}
+    The hashes are shell comments, not part of this template comment: run_onchange_ compares
+    the rendered script, and a template comment renders to nothing.
 */}}
 {{ if eq .chezmoi.os "darwin" -}}
+# plist:    {{ include "Library/LaunchAgents/com.jared.notes-sync.plist.tmpl" | sha256sum }}
+# launcher: {{ include "dot_local/bin/executable_notes-sync" | sha256sum }}
+# wrapper:  {{ include "dot_local/bin/executable_ob" | sha256sum }}
 set -euo pipefail
 
 # The obsidian-headless release the homelab obsidian-sync image is built from.

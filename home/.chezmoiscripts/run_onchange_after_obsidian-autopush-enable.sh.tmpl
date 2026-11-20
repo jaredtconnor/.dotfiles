@@ -1,14 +1,15 @@
 #!/usr/bin/env bash
 {{/*
     Enable the obsidian-autopush timer on the notes backup host (identity.notes_backup_host;
-    gated via .chezmoiignore, Linux-guarded here too). Re-runs when a unit or the script changes.
-
-    service: {{ include "dot_config/systemd/user/obsidian-autopush.service" | sha256sum }}
-    timer:   {{ include "dot_config/systemd/user/obsidian-autopush.timer" | sha256sum }}
-    alert:   {{ include "dot_config/systemd/user/obsidian-autopush-alert.service" | sha256sum }}
-    script:  {{ include "dot_local/bin/executable_obsidian-autopush" | sha256sum }}
+    gated via .chezmoiignore, Linux-guarded here too). Re-runs when a unit or the script changes
+    (hash lines below; shell comments, because run_onchange_ compares the rendered script and
+    a template comment renders to nothing).
 */}}
 {{ if eq .chezmoi.os "linux" -}}
+# service: {{ include "dot_config/systemd/user/obsidian-autopush.service" | sha256sum }}
+# timer:   {{ include "dot_config/systemd/user/obsidian-autopush.timer" | sha256sum }}
+# alert:   {{ include "dot_config/systemd/user/obsidian-autopush-alert.service" | sha256sum }}
+# script:  {{ include "dot_local/bin/executable_obsidian-autopush" | sha256sum }}
 set -euo pipefail
 # fleet-sync applies over SSH, where the user manager's runtime dir isn't always exported.
 export XDG_RUNTIME_DIR="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}"

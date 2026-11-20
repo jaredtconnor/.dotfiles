@@ -3,13 +3,13 @@
     Bootstrap helium-sync automated push on personal Macs.
       1. Clone the canonical data repo to ~/.helium-data if absent.
       2. (Re)load the com.jared.helium-sync LaunchAgent.
-    Re-runs whenever the plist or wrapper changes (hashes below).
-    Gated to the helium hosts via .chezmoiignore; darwin-guarded here too.
-
-    plist:   {{ include "Library/LaunchAgents/com.jared.helium-sync.plist" | sha256sum }}
-    wrapper: {{ include "dot_local/bin/executable_helium-autosync" | sha256sum }}
+    Re-runs whenever the plist or wrapper changes (hash lines below; shell comments,
+    because run_onchange_ compares the rendered script and a template comment renders
+    to nothing). Gated to the helium hosts via .chezmoiignore; darwin-guarded here too.
 */}}
 {{ if eq .chezmoi.os "darwin" -}}
+# plist:   {{ include "Library/LaunchAgents/com.jared.helium-sync.plist" | sha256sum }}
+# wrapper: {{ include "dot_local/bin/executable_helium-autosync" | sha256sum }}
 set -euo pipefail
 
 REPO="$HOME/.helium-data"
