@@ -43,7 +43,6 @@ keep Music
 keep Pictures
 keep Public
 keep Videos
-keep bin
 keep secrets
 keep *.lnk
 keep *.url
@@ -88,6 +87,8 @@ keep ntuser.*
 keep Dropbox
 keep OneDrive*
 keep AzuriteConfig
+# chezmoi's fallback installer (install.ps1) drops chezmoi.exe in ~\bin
+keep bin
 keep IntelGraphicsProfiles
 keep pipx
 keep Postman

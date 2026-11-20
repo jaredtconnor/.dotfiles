@@ -3,3 +3,6 @@
 # sync-notes: rsync between a Mac and the NAS, replaced by Obsidian Sync (notes-sync).
 .local/bin/sync-notes
 Library/LaunchAgents/com.jared.sync-notes.plist
+
+# ~/bin PATH entry: Dotbot-era script dir, replaced by ~/.local/bin.
+.config/zsh/paths/scripts.path.sh
